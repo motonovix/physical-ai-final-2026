@@ -2,7 +2,7 @@
 
 **Mac のキーボード / マウス / ゲームパッドで LIBERO-Plus の env を直接操作し、タスクを解いて軌道を記録する。**
 
-[motonovix/parc2026](https://github.com/motonovix/parc2026) の `data_studio/teleop`（2026-10-18 時点）から、
+非公開リポジトリ motonovix/parc2026 の `data_studio/teleop`（2026-10-18 時点）から、
 操作・表示・記録の本体だけを移植した。parc2026 固有のタスク表（逆方向タスク・候補群・careful 収集・
 運営 kit の Track 3 など）は外し、LIBERO / LIBERO-Plus の標準 suite だけで動く最小構成にしてある。
 
