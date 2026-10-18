@@ -1,0 +1,13 @@
+# ② データセット化の後半（LeRobot 形式への書き出し・確認・アップロード）の環境。Python 3.12。
+# LeRobot は notebook と同じ v0.6.0。主な依存は 2026-10-18 に解決された版で固定する。
+# 前半の描画（render_frames.py）は teleop と同じ ../requirements.txt の .venv（Python 3.10）で動かす。
+lerobot[dataset]==0.6.0
+torch==2.11.0
+torchvision==0.26.0
+torchcodec==0.11.1
+numpy==2.2.6
+av==15.1.0
+datasets==4.8.5
+pyarrow==26.0.0
+pandas==2.3.3
+huggingface-hub==1.33.0

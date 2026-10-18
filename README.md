@@ -12,16 +12,16 @@
 成否と動画で評価する。
 
 ```text
- ① teleop（Mac）            ② データセット化            ③ 追加学習と評価（Colab）
+ ① teleop（Mac）            ② データセット化（Mac）     ③ 追加学習と評価（Colab）
  人がタスクを解いて記録  ─▶  LeRobot 形式で HF へ  ─▶  SmolVLA を LoRA で追加学習
- teleop/                    （TODO）                    LIBERO-Plus で動かして動画を録る
+ teleop/                    dataset/                    LIBERO-Plus で動かして動画を録る
                                                         notebooks/smolvla_libero_finetune.ipynb
 ```
 
 | 段階 | 中身 | 状態 |
 | :--- | :--- | :--- |
 | ① teleop | LIBERO-Plus をゲームパッド / キーボードで操作し、action 列と MuJoCo の state 列を記録する（[teleop/](teleop/README.md)） | 動く |
-| ② データセット化 | 記録した state 列から 2 カメラの 256px 画像を描き直し、LeRobot v3.0 形式にして Hugging Face に置く | 未着手 |
+| ② データセット化 | 記録した state 列から 2 カメラの 256px 画像を描き直し、LeRobot v3.0 形式にして Hugging Face に置く（[dataset/](dataset/README.md)） | 動く（手元の記録で確認。HF へはまだ上げていない） |
 | ③ 追加学習と評価 | SmolVLA（`lerobot/smolvla_libero_plus`）を追加学習し、学習前後のモデルを LIBERO-Plus で動かして動画を残す（[notebook](notebooks/smolvla_libero_finetune.ipynb)） | 動く（公開データで確認） |
 
 ## 最終課題
@@ -45,6 +45,27 @@
 | 記録 | MuJoCo の state 列と action 列（`.npz`）＋ 指示文などのメタ情報（`.json`）。画像は持たず、後から好きなカメラで描き直す |
 | 成功判定 | BDDL のゴール述語の成立 ＋ 対象外の物体を 1 mm 以上動かしていないこと |
 
+## ② teleop の記録を LeRobot データセットにする
+
+teleop の記録は画像を持たないので、記録した MuJoCo の state 列から学習用の観測を描き直す。
+詳細は [dataset/README.md](dataset/README.md)。
+
+```bash
+make -C dataset setup   # LeRobot 0.6.0 の .venv-lerobot（Python 3.12）を作る（初回だけ）
+make -C dataset all     # 記録を選ぶ → 描き直す → LeRobot v3.0 に書き出す → 読み戻して確かめる
+make -C dataset push    # Hugging Face へ上げる（既定 private）
+```
+
+| 項目 | 内容 |
+| :--- | :--- |
+| 使う記録 | 既定は保存メニューで selected を選んだもののうち、success かつ対象外の物体を 1 mm 以上動かしていないもの。`KIND` / `SUITE` / `TASK` で変えられる |
+| 観測 | 各 action の直前の state から、`agentview` と `robot0_eye_in_hand` を 256px で描いて 180° 回し、8 次元の状態を作る。全 frame で state を誤差 0 で復元できることを確かめる |
+| 形式 | `lerobot/libero_plus` と同じ（AV1 の動画 2 本・state 8 次元・action 7 次元・fps 20）。notebook のデータセットのセルをそのまま通して確かめる |
+| 来歴 | episode ごとに元の記録の相対パスと sha256、選んだ条件、描画の設定、シミュレータの版を `meta/teleop_provenance.json` に残す |
+
+描画は teleop と同じ Python 3.10 の環境、書き出しは LeRobot 0.6 の Python 3.12 の環境で動かす
+（シミュレータは NumPy 1.26、LeRobot 0.6 は NumPy 2 を要するため）。
+
 ## ③ SmolVLA を追加学習して動画で評価する
 
 [notebooks/smolvla_libero_finetune.ipynb](notebooks/smolvla_libero_finetune.ipynb) を Colab で開き、上から順に実行する
@@ -60,7 +81,8 @@
 | 10〜12 | LIBERO-Plus と assets を入れ、学習前後のモデルを同じタスク・同じ初期配置で動かす。成否の表と mp4（正面カメラ＋手首カメラ）を残す |
 
 既定では、動作確認のために公開データ `lerobot/libero_plus` から `libero_spatial` の 1 タスク分（50 episode）を選んで学習し、
-同じタスクで評価する。teleop のデータセットができたら `DATASET_REPO` を差し替える。
+同じタスクで評価する。teleop のデータセット（②）を上げたら `DATASET_REPO` を差し替え、`DATASET_REVISION` と
+`DATASET_TASK_FILTER` を `None` にする。
 
 学習データと評価の観測は次の約束でそろえている（`lerobot/libero_plus` と同じ形式）。
 
@@ -73,7 +95,7 @@
 
 | 講座のテーマ | この課題での取り組み |
 | :--- | :--- |
-| MLOps・RobOps | データセット・初期重み・LeRobot・LIBERO-Plus の版を revision / tag / commit で固定し、学習と評価を同じ notebook で再現できるようにした。teleop 側はシミュレータの版を**起動時に照合して違えば止める**。記録は state 列なので**決定論的に再生でき**、データの来歴（suite・task・初期状態・入力デバイス）を JSON に残す |
+| MLOps・RobOps | データセット・初期重み・LeRobot・LIBERO-Plus の版を revision / tag / commit で固定し、学習と評価を同じ notebook で再現できるようにした。teleop 側はシミュレータの版を**起動時に照合して違えば止める**。記録は state 列なので**決定論的に再生でき**、データの来歴（suite・task・初期状態・入力デバイス）を JSON に残す。データセットには episode ごとに元の記録の sha256 を残す |
 | コンピュータアーキテクチャ（メモリ・デバイスの管理） | 学習（GPU メモリを大きく使う）とシミュレータでの評価（MuJoCo の EGL 描画）を別プロセスに分けた。Colab で描画が CPU に落ちる問題に備え、NVIDIA の EGL を明示し、実際の描画先を表示する。teleop ではゲームパッドを **UI の 1 フレームに 1 回だけ snapshot** して読み、押下の取りこぼしや二重入力を防ぐ |
 | ソフトウェアとしての品質 | teleop の入力処理・状態遷移を物理から切り離し、**模擬パッドで 57 件の回帰試験**を回せるようにした |
 | ROS2 | 未着手（今後の課題を参照） |
@@ -87,6 +109,9 @@
 | teleop | 入力・状態遷移の回帰試験（`make -C teleop test-input`） | 57 件すべて成功 |
 | teleop | 窓なしの経路確認（`make -C teleop smoke`）: `libero_spatial` #0 / `libero_90` #3 | 成功（2 カメラ描画込みで 15〜20 step/s） |
 | teleop | 記録の保存 → mp4 への書き出し | 成功 |
+| データセット | 同じ teleop で以前に記録した `libero_spatial` の軌道（クリア 4 本・495 frame）から `make -C dataset all` | 成功（state の復元誤差 0、action・state は元と完全一致、notebook のデータセットのセルも通る） |
+| データセット | 描いた画像の向きを `lerobot/libero_plus` の同じ base task の画像と比べる | 一致（180° 回転後の向き） |
+| データセット | Sensor Noise の variant（noise 3） | env の `step()` と同じノイズが正面カメラにだけ乗る |
 | notebook | nbformat の検証と全コードセルの構文 | 成功 |
 | notebook | 設定セル＋データセットのセルを `lerobot/libero_plus` で実行 | 成功（50 episode / 4,989 frame を選択） |
 | notebook | 学習コマンド（同じオプション）を Mac の CPU で 2 step | 成功（LoRA の checkpoint を保存） |
@@ -103,8 +128,6 @@
 
 ## 考察と今後の課題
 
-- **② データセット化。** teleop の記録（state 列）から 256px の 2 カメラ画像を描き直し、上の約束どおりの
-  LeRobot データセットにして Hugging Face へ置くスクリプトを作る。
 - **ROS2 との接続。** 入力（ゲームパッド）と状態（EEF 位置・姿勢・グリッパ）をトピックとして流せば、
   シミュレータと実機で同じ操作系を使える。
 - **方策と人の組み合わせ。** teleop には方策の rollout を途中から人が引き継ぐ機能（`--from-recording`）があるので、
@@ -126,6 +149,17 @@ make -C teleop smoke DEVICE=keyboard  # env を作って 40 step 回す（窓な
 make -C teleop teleop                 # ゲームパッドで操作（DEVICE=keyboard でキーボード）
 ```
 
+### データセット化（Mac）
+
+teleop の環境に加えて、LeRobot 0.6.0 用の Python 3.12 の環境を作る。詳細は [dataset/README.md](dataset/README.md#使い方)。
+
+```bash
+make -C dataset setup                 # .venv-lerobot を作り dataset/requirements.txt を入れる
+make -C dataset all                   # 記録 → LeRobot データセット（dataset/build/）
+.venv-lerobot/bin/hf auth login       # 書き込み権限つきの token（リポジトリには置かない）
+make -C dataset push                  # Hugging Face へ上げる（既定 private）
+```
+
 ### 追加学習と評価（Colab）
 
 GPU ランタイム（L4 / A100 推奨、T4 でも LoRA は動く）を選び、Colab の Secrets に `HF_TOKEN` を登録して、
@@ -136,6 +170,12 @@ notebook を上から実行する。必要なパッケージは notebook の中�
 ```text
 .
 ├── README.md
+├── dataset/                            # teleop の記録を LeRobot データセットにして HF へ上げる
+│   ├── Makefile
+│   ├── README.md
+│   ├── requirements.txt                # LeRobot 0.6.0 の環境（Python 3.12）
+│   ├── scripts/
+│   └── build/                          # 描画結果と書き出したデータセット（Git 管理外）
 ├── notebooks/
 │   └── smolvla_libero_finetune.ipynb   # SmolVLA の追加学習と動画での評価（Colab）
 ├── requirements.txt                    # teleop の実行環境（Python 3.10）

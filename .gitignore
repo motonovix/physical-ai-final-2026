@@ -4,3 +4,5 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 MUJOCO_LOG.TXT
+.venv-lerobot/
+dataset/build/
