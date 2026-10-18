@@ -1,0 +1,7 @@
+# シミュレータの版の契約。teleop/scripts/sim_runtime.py が起動時にこの 5 つを照合する。
+# PARC2026 本選 kit の setup.sh（2026-09-09）と同じ版。
+mujoco==3.7.0
+robosuite==1.4.0
+numpy==1.26.4
+gym==0.25.2
+bddl==3.6.0

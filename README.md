@@ -32,23 +32,36 @@
 
 > 方針・手法・実験の結果をここにまとめる
 
-- TODO
+- LIBERO-Plus のシミュレーション環境を人がゲームパッド / キーボードで操作（teleop）し、タスクを解かせる。
+  操作・記録の土台は [`teleop/`](teleop/README.md)（[motonovix/parc2026](https://github.com/motonovix/parc2026) の teleop を最小構成で移植）。
+- TODO: 解かせるタスクと、その先の構成（ROS2 との接続など）
 
 ## セットアップ
 
-> 実行環境と手順が決まったら記入する
+macOS（Apple Silicon）・Python 3.10・[uv](https://docs.astral.sh/uv/) を前提にする。
+LIBERO-plus の clone と assets、ImageMagick も要る。詳細は [teleop/README.md](teleop/README.md#セットアップ)。
 
 ```bash
-# TODO
+brew install imagemagick
+make -C teleop setup                  # .venv を作り requirements.txt を入れる
+make -C teleop test-input             # 入力・状態遷移の試験（窓なし）
+make -C teleop smoke DEVICE=keyboard  # env を作って 40 step 回す（窓なし）
+make -C teleop teleop                 # ゲームパッドで操作（DEVICE=keyboard でキーボード）
 ```
 
 ## ディレクトリ構成
 
-> コードを追加したら更新する
-
 ```text
 .
-└── README.md
+├── README.md
+├── requirements.txt        # 実行環境（Python 3.10）
+├── requirements-sim.txt    # シミュレータの版の契約（起動時に照合）
+└── teleop/                 # LIBERO-Plus を人の手で操作・記録する
+    ├── Makefile
+    ├── README.md
+    ├── scripts/
+    ├── tests/
+    └── recordings/         # 記録した軌道（Git 管理外）
 ```
 
 ## 注意事項
