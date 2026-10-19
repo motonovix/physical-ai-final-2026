@@ -22,7 +22,7 @@ help:
 	@echo "make parts    [PART=teleop_b など] -- パーツを作る（画面録画は clips.json の screens）"
 	@echo "make norm     -- assets/teleop/ の録画を 1920x1080・30fps にそろえる"
 	@echo "make sheet    -- パーツのコマを並べた確認用の画像を作る"
-	@echo "make final    -- timeline.txt の順につないで build/final.mp4 に書き出す"
+	@echo "make final    [NARRATION=0] -- timeline.txt の順につなぎ、ナレーションを重ねて build/final.mp4 に書き出す"
 	@echo "make open     -- build/final.mp4 を開く"
 
 collect:
@@ -41,7 +41,7 @@ sheet:
 	$(PY) $(SCRIPT) sheet
 
 final:
-	$(PY) $(SCRIPT) final
+	$(PY) $(SCRIPT) final $(if $(filter 0,$(NARRATION)),--no-narration)
 
 open:
 	open $(HERE)build/final.mp4

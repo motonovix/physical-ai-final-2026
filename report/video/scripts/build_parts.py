@@ -709,14 +709,68 @@ def sheet(args: argparse.Namespace) -> None:
         print(f"wrote {out.relative_to(HERE)}")
 
 
+NARRATION_EXT = (".m4a", ".wav", ".aiff", ".mp3", ".caf")
+
+
+def narration_audio(name: str, cfg: dict) -> Path | None:
+    """パーツ name のナレーション。assets/narration/<name>.* があればそれ（自分の声）、無ければ台本を読み上げる。"""
+    for ext in NARRATION_EXT:
+        own = ASSETS / "narration" / f"{name}{ext}"
+        if own.exists():
+            return own
+    text = cfg.get("lines", {}).get(name)
+    if not text:
+        return None
+    spoken = text
+    for word, reading in cfg.get("readings", {}).items():   # 読み上げで読み違える語を、読み方に置き換える
+        spoken = spoken.replace(word, reading)
+    out = BUILD / "narration" / f"{name}.aiff"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    stamp = out.with_suffix(".txt")
+    key = f"{cfg.get('voice', 'Kyoko')}|{cfg.get('rate', '')}|{spoken}"
+    if not (out.exists() and stamp.exists() and stamp.read_text() == key):   # 台本が変わったときだけ作り直す
+        cmd = ["say", "-v", cfg.get("voice", "Kyoko"), "-o", str(out)]
+        if cfg.get("rate"):
+            cmd += ["-r", str(cfg["rate"])]
+        subprocess.run([*cmd, spoken], check=True)
+        stamp.write_text(key)
+    return out
+
+
+def narrate(part: Path, audio: Path, cfg: dict) -> tuple[Path, float]:
+    """パーツにナレーションを重ねる。ナレーションが長ければ、最後のコマで止めたまま延ばす。"""
+    lead, tail = cfg.get("lead", 0.4), cfg.get("tail", 0.6)
+    d_part, d_audio = duration(part), duration(audio)
+    total = max(d_part, lead + d_audio + tail)
+    out = BUILD / "narrated" / part.name
+    out.parent.mkdir(parents=True, exist_ok=True)
+    ms = int(lead * 1000)
+    ffmpeg(["-i", part, "-i", audio, "-filter_complex",
+            f"[0:v]tpad=stop_mode=clone:stop_duration={total - d_part + 0.1:.3f}[v];"
+            f"[1:a]aresample=48000,aformat=channel_layouts=stereo,loudnorm=I=-16:TP=-1.5:LRA=11,"
+            f"aresample=48000,adelay={ms}|{ms},apad[a]",
+            "-map", "[v]", "-map", "[a]", "-t", f"{total:.3f}", *VCODEC, *ACODEC, out])
+    return out, total - d_part
+
+
 def final(args: argparse.Namespace) -> None:
     names = [line.split("#", 1)[0].strip() for line in (HERE / "timeline.txt").read_text().splitlines()]
     names = [n for n in names if n]
     missing = [n for n in names if not (PARTS / n).exists()]
     if missing:
         raise SystemExit(f"build/parts/ に無い: {', '.join(missing)}（make parts / make norm を先に）")
+    narration = {} if args.no_narration else json.loads((HERE / "clips.json").read_text()).get("narration", {})
+    files = []
+    for n in names:
+        part = PARTS / n
+        audio = narration_audio(Path(n).stem, narration) if narration else None
+        if audio:
+            part, extra = narrate(part, audio, narration)
+            src = "自分の声" if audio.parent == ASSETS / "narration" else "読み上げ"
+            print(f"  {n:<16} {src}  {duration(audio):5.1f} s" + (f"  （{extra:.1f} s 延ばした）" if extra > 0 else ""))
+        files.append(part)
     lst = TMP / "concat.txt"
-    lst.write_text("".join(f"file '{PARTS / n}'\n" for n in names))
+    lst.write_text("".join(f"file '{f}'\n" for f in files))
     out = BUILD / "final.mp4"
     ffmpeg(["-f", "concat", "-safe", "0", "-i", lst, *VCODEC, *ACODEC, "-movflags", "+faststart", out])
     print(f"wrote {out.relative_to(HERE)}  {duration(out):.1f} s  ({len(names)} parts)")
@@ -734,7 +788,8 @@ def main() -> None:
     n = sub.add_parser("norm")
     n.add_argument("--force", action="store_true", help="作り済みでも作り直す")
     sub.add_parser("sheet")
-    sub.add_parser("final")
+    f = sub.add_parser("final")
+    f.add_argument("--no-narration", action="store_true", help="ナレーションを入れずにつなぐ")
     args = ap.parse_args()
     for d in (PARTS, TMP):
         d.mkdir(parents=True, exist_ok=True)
