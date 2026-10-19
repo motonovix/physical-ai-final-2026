@@ -31,6 +31,7 @@ BG = (16, 18, 23)
 FG = (240, 240, 240)
 SUB = (150, 156, 166)
 OK = (40, 150, 85)
+OK_TEXT = (90, 200, 125)          # 暗い背景の上で読める緑
 NG = (190, 55, 55)
 FONT_DIR = Path("/System/Library/Fonts")
 CHROME = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
@@ -61,13 +62,13 @@ def has_audio(path: Path) -> bool:
 
 
 def compose(out: Path, bg: Path, videos: list[tuple], badges: list[tuple], total: float,
-            fade_in: float = 0.0) -> None:
+            fade_in: float = 0.0, fade_out: float = 0.0) -> None:
     """背景の上に動画と札を重ねる。
 
     videos: (path, speed, (x, y), (w, h)[, 前処理])。最後のコマで止めたまま total まで伸ばす。
         前処理は trim・crop など、速さを変える前に掛ける filter（省略可）。元の音声は使わない。
     badges: (png, (x, y), 出す時刻 s)。時刻を (出す s, 消す s) にすると、その間だけ出す。
-    fade_in: 頭を黒から浮かび上がらせる秒数。
+    fade_in / fade_out: 頭を黒から浮かび上がらせる秒数 / 終わりを黒へ沈める秒数。
     """
     t = f"{total:.3f}"
     args = ["-loop", "1", "-framerate", FPS, "-t", t, "-i", bg]
@@ -89,6 +90,8 @@ def compose(out: Path, bg: Path, videos: list[tuple], badges: list[tuple], total
         chains.append(f"[{last}][{first + j}:v]overlay={x}:{y}:enable='{cond}'[b{j}]")
         last = f"b{j}"
     fade = f"fade=t=in:st=0:d={fade_in:.3f}," if fade_in else ""
+    if fade_out:
+        fade += f"fade=t=out:st={total - fade_out:.3f}:d={fade_out:.3f},"
     chains.append(f"[{last}]{fade}format=yuv420p[vout]")
     audio = first + len(badges)
     ffmpeg([*args, "-filter_complex", ";".join(chains), "-map", "[vout]", "-map", f"{audio}:a",
@@ -360,11 +363,14 @@ def cover(img: Image.Image) -> Image.Image:
     return img.crop((x, y, x + W, y + H))
 
 
-def part_title(cfg: dict) -> None:
-    """題名の画面。背景に teleop の画面録画のコマをぼかして暗く敷く。"""
+def part_title(cfg: dict, name: str = "title") -> None:
+    """題名の画面（締めの画面にも使う）。背景に teleop の画面録画のコマをぼかして暗く敷く。
+
+    sub（副題）・url・foot（小さな添え書き）は、あるものだけ書く。
+    """
     bg_cfg = cfg.get("bg")
     if bg_cfg and (ASSETS / "teleop" / bg_cfg["src"]).exists():
-        shot = frame_of(ASSETS / "teleop" / bg_cfg["src"], bg_cfg.get("at", 0.0), TMP / "title_shot.png")
+        shot = frame_of(ASSETS / "teleop" / bg_cfg["src"], bg_cfg.get("at", 0.0), TMP / f"{name}_shot.png")
         img = cover(shot).filter(ImageFilter.GaussianBlur(14))
         img = ImageEnhance.Brightness(img).enhance(0.32)
     else:
@@ -374,18 +380,30 @@ def part_title(cfg: dict) -> None:
     d.text((W // 2, 400), lead, font=font(6, 64), fill=FG, anchor="mm")
     d.text((W // 2, 535), main, font=font(8, 136), fill=FG, anchor="mm")
     d.line((W // 2 - 360, 650, W // 2 + 360, 650), fill=SUB, width=2)
-    d.text((W // 2, 712), cfg["sub"], font=font(3, 38), fill=FG, anchor="mm")
-    bg = TMP / "title_bg.png"
+    y = 712
+    if cfg.get("sub"):
+        d.text((W // 2, y), cfg["sub"], font=font(3, 38), fill=FG, anchor="mm")
+        y += 70
+    if cfg.get("url"):
+        d.text((W // 2, y), cfg["url"], font=font(6, 44), fill=(92, 170, 220), anchor="mm")
+        y += 80
+    if cfg.get("foot"):
+        d.text((W // 2, y), cfg["foot"], font=font(3, 30), fill=SUB, anchor="mm")
+    bg = TMP / f"{name}_bg.png"
     img.save(bg)
-    compose(PARTS / "title.mp4", bg, [], [], cfg.get("seconds", 2.0), fade_in=0.3)
+    compose(PARTS / f"{name}.mp4", bg, [], [], cfg.get("seconds", 2.0),
+            fade_in=cfg.get("fade_in", 0.3), fade_out=cfg.get("fade_out", 0.0))
 
 
 def part_overview(cfg: dict, name: str = "overview") -> None:
     """流れの図。見出しの後、四角を左から順に出す。四角の上の印は mark（既定は ①②…）。"""
     img, dr = canvas()
-    dr.text((W // 2, 215), cfg["lead"], font=font(6, 50), fill=FG, anchor="mm")
+    size = 50
+    while font(6, size).getlength(cfg["lead"]) > W - 200 and size > 34:
+        size -= 2
+    dr.text((W // 2, 215), cfg["lead"], font=font(6, size), fill=FG, anchor="mm")
     steps = cfg["steps"]
-    n, box_w, gap, box_h, top = len(steps), 380, 80, 330, 400
+    n, box_w, gap, box_h, top = len(steps), cfg.get("box_w", 380), cfg.get("gap", 80), 330, 400
     x0 = (W - n * box_w - (n - 1) * gap) // 2
     accent = (92, 170, 220)
     badges = []
@@ -394,26 +412,52 @@ def part_overview(cfg: dict, name: str = "overview") -> None:
         layer = Image.new("RGBA", (box_w + gap, box_h), (0, 0, 0, 0))
         d = ImageDraw.Draw(layer)
         bx = gap if i else 0          # 2 つ目からは左の矢印ごと出す
+        dashed = step.get("dashed", False)                # 点線の四角：まだやっていないこと
+        line_c = (110, 116, 128) if dashed else SUB
+        box_c = (110, 116, 128) if dashed else accent
+        name_c = (175, 180, 190) if dashed else FG
         if i:
             ay = box_h // 2
-            d.line((10, ay, gap - 22, ay), fill=SUB, width=5)
-            d.polygon([(gap - 10, ay), (gap - 30, ay - 14), (gap - 30, ay + 14)], fill=SUB)
-        d.rounded_rectangle((bx, 0, bx + box_w - 1, box_h - 1), radius=22, fill=(30, 34, 42, 255),
-                            outline=accent, width=3)
+            if dashed:
+                for ax in range(10, gap - 30, 14):
+                    d.line((ax, ay, min(ax + 7, gap - 30), ay), fill=line_c, width=5)
+            else:
+                d.line((10, ay, gap - 22, ay), fill=line_c, width=5)
+            d.polygon([(gap - 10, ay), (gap - 30, ay - 14), (gap - 30, ay + 14)], fill=line_c)
+        if dashed:
+            d.rounded_rectangle((bx, 0, bx + box_w - 1, box_h - 1), radius=22, fill=(22, 25, 31, 255))
+            for k in range(0, box_w, 22):                 # 上下の辺
+                d.line((bx + k, 1, bx + min(k + 12, box_w - 1), 1), fill=box_c, width=3)
+                d.line((bx + k, box_h - 2, bx + min(k + 12, box_w - 1), box_h - 2), fill=box_c, width=3)
+            for k in range(0, box_h, 22):                 # 左右の辺
+                d.line((bx + 1, k, bx + 1, min(k + 12, box_h - 1)), fill=box_c, width=3)
+                d.line((bx + box_w - 2, k, bx + box_w - 2, min(k + 12, box_h - 1)), fill=box_c, width=3)
+        else:
+            d.rounded_rectangle((bx, 0, bx + box_w - 1, box_h - 1), radius=22, fill=(30, 34, 42, 255),
+                                outline=box_c, width=3)
         cx = bx + box_w // 2
         mark = step.get("mark") or "①②③④⑤⑥"[i]
-        d.text((cx, 62), mark, font=font(6, 54 if len(mark) == 1 else 34), fill=accent, anchor="mm")
+        d.text((cx, 62), mark, font=font(6, 54 if len(mark) == 1 else 34), fill=box_c, anchor="mm")
         size = 40
-        while font(6, size).getlength(step["name"]) > box_w - 40 and size > 28:
+        while font(6, size).getlength(step["name"]) > box_w - 40 and size > 26:
             size -= 2
-        d.text((cx, 130), step["name"], font=font(6, size), fill=FG, anchor="mm")
-        ty = 196
+        d.text((cx, 130), step["name"], font=font(6, size), fill=name_c, anchor="mm")
+        ty = 190
         for note in step.get("notes", []):
-            d.text((cx, ty), note, font=font(3, 28), fill=SUB, anchor="mm")
-            ty += 40
+            size = 28
+            while font(3, size).getlength(note) > box_w - 30 and size > 20:
+                size -= 1
+            d.text((cx, ty), note, font=font(3, size), fill=SUB, anchor="mm")
+            ty += 38
+        if step.get("result"):
+            size = 32
+            while font(6, size).getlength(step["result"]) > box_w - 30 and size > 20:
+                size -= 1
+            d.text((cx, box_h - 44), step["result"], font=font(6, size),
+                   fill=(175, 180, 190) if dashed else OK_TEXT, anchor="mm")
         png = TMP / f"{name}_{i}.png"
         layer.save(png)
-        badges.append((png, (x - bx, top), 0.4 + 0.6 * i))
+        badges.append((png, (x - bx, top), step.get("at", 0.4 + 0.6 * i)))
     if cfg.get("foot"):
         dr.text((W // 2, top + box_h + 130), cfg["foot"], font=font(3, 34), fill=SUB, anchor="mm")
     bg = TMP / f"{name}_bg.png"
@@ -607,9 +651,11 @@ def parts(args: argparse.Namespace) -> None:
                 "successes": lambda: part_successes(clips), "results": part_results}
     if "title" in clips:
         builders["title"] = lambda: part_title(clips["title"])
-    for name in ("overview", "training"):
+    for name in ("overview", "training", "recap"):
         if name in clips:
             builders[name] = lambda name=name: part_overview(clips[name], name)
+    if "outro" in clips:
+        builders["outro"] = lambda: part_title(clips["outro"], "outro")
     if "controller" in clips and (ASSETS / "photo" / clips["controller"]["src"]).exists():
         builders["controller"] = lambda: part_controller(clips["controller"])
     if "code" in clips:

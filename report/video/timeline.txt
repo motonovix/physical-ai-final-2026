@@ -19,4 +19,5 @@ smolvla.mp4                # 6 SmolVLA
 compare.mp4                # 7 π0.5 の前後比較
 successes.mp4              # 8 解けた例
 results.mp4                # 9 結果
-# outro.mp4                # 10 まとめ（未）
+recap.mp4                  # 10 まとめ（冒頭の図に結果と次にやることを足す、8 秒）
+outro.mp4                  # 11 締め（題名・リポジトリの URL、4 秒）

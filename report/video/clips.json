@@ -433,5 +433,73 @@
         }
       ]
     }
+  },
+  "recap": {
+    "lead": "まとめ：ゲームコントローラと MacBook で、フィジカル AI の流れを一通り試した",
+    "box_w": 300,
+    "gap": 60,
+    "steps": [
+      {
+        "name": "テレオペ",
+        "notes": [
+          "MacBook＋コントローラ",
+          "Claude Code で自作"
+        ],
+        "result": "6 軸＋グリッパ",
+        "at": 0.3
+      },
+      {
+        "name": "デモの記録",
+        "notes": [
+          "操作の軌跡を記録",
+          "LeRobot 形式"
+        ],
+        "result": "学習データにする",
+        "at": 0.6
+      },
+      {
+        "name": "VLA の追加学習",
+        "notes": [
+          "Colab の GPU"
+        ],
+        "result": "SmolVLA・π0.5",
+        "at": 0.9
+      },
+      {
+        "name": "シミュレータで評価",
+        "notes": [
+          "逆向きの課題 16 問"
+        ],
+        "result": "0/16 → 13/16",
+        "at": 1.2
+      },
+      {
+        "name": "実機へ",
+        "notes": [
+          "ROS2 でつなぐ",
+          "同じコントローラで操作"
+        ],
+        "result": "次にやること",
+        "dashed": true,
+        "at": 2.6
+      }
+    ],
+    "foot": "課題：ほかの物への接触（成功 13 問のうち 5 問）と、未知の配置で解けるかの確認",
+    "seconds": 8.0
+  },
+  "outro": {
+    "main": [
+      "ゲームコントローラと MacBook で始める",
+      "フィジカル AI"
+    ],
+    "url": "github.com/motonovix/physical-ai-final-2026",
+    "foot": "Physical AI 講座 2026 応用編1 最終課題　@motonovix",
+    "seconds": 4.0,
+    "fade_in": 0.3,
+    "fade_out": 0.8,
+    "bg": {
+      "src": "b2.mov",
+      "at": 9.0
+    }
   }
 }
