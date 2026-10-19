@@ -12,9 +12,9 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 0 | タイトル | 5 秒 | 題名・講座名・`@motonovix` | 文字の画面（作る） | `title.mp4`（未） |
 | 1 | 全体の流れ | 10〜15 秒 | ① teleop → ② LeRobot 形式のデータ → ③ 追加学習 → ④ シミュレータで評価 の図 | 文字の画面（作る） | `pipeline.mp4`（未） |
-| 2 | teleop：操作環境 | 10〜15 秒 | 課題を選ぶ画面、指示文とガイドの表示、Pro コントローラで動かし始める | [素材 A](#撮る素材) | `teleop_a.mp4`（未） |
-| 3 | teleop：1 本解く | 25〜35 秒 | ボウルをコンロに載せる。長ければ 1.5〜2 倍速にして画面に明記 | [素材 B](#撮る素材) | `teleop_b.mp4`（未） |
-| 4 | teleop：成功の判定と記録 | 5〜10 秒 | ゴールの成立、ほかの物を動かしていない判定、保存 | 素材 B の終わり | （3 と同じ） |
+| 2 | teleop：課題を選ぶ | 10〜15 秒 | 課題を選ぶメニュー | [素材 A](#撮る素材)（a2 の 0〜8 秒） | `teleop_a.mp4`（8.5 秒） |
+| 3〜4 | teleop：1 本解く | 25〜35 秒 | 1147「ボウルをコンロに載せる」を READY → 操作 → SUCCESS → 保存まで | [素材 B](#撮る素材)（b2 の 0〜18 秒） | `teleop_b.mp4`（18.5 秒） |
+| 4′ | うまくいかない例 | 5〜12 秒 | ワインの瓶に当たり、SUCCESS が出ても「Collided」でやり直す | [素材 C](#撮る素材)（b1 の 8〜19 秒） | `teleop_c.mp4`（11.5 秒） |
 | 5 | 学習へのつなぎ | 8〜10 秒 | 記録 → 2 カメラの画像を描き直して LeRobot 形式 → Colab で追加学習 | 文字の画面（作る） | `training.mp4`（未） |
 | 6 | SmolVLA | 10〜12 秒 | SmolVLA を人の teleop 18 本で LoRA 追加学習し、赤いマグの課題を解く（正面＋手首カメラ、等倍速） | parc2026（2026-09-08） | `smolvla.mp4`（今 7.7 秒） |
 | 7 | π0.5 の前後比較 | 12〜15 秒 | 追加学習の前と後を、同じ問題・同じ初期配置で横に並べる（2 倍速） | parc2026（2026-09-20） | `compare.mp4`（今 9.5 秒） |
@@ -23,6 +23,7 @@
 | 10 | まとめ | 8〜10 秒 | 分かったこと、今後（ROS2 との接続、方策の失敗を人が直す DAgger 型の収集）、リポジトリの URL | 文字の画面（作る） | `outro.mp4`（未） |
 
 合計は約 2 分（前半 45〜60 秒、後半 40〜50 秒、文字の画面 30〜40 秒）。
+2026-10-19 時点の下書き（2〜4′ と 6〜9）は 72 秒。文字の画面（0・1・5・10）を足すと 1 分 45 秒前後になる。
 6〜9 は今のままだと短いので、ナレーションに合わせて最後のコマで止めておく秒数を延ばす。
 並びは [timeline.txt](timeline.txt)、使う問題と日本語の字幕は [clips.json](clips.json) で変える。
 
@@ -79,7 +80,11 @@ make -C teleop teleop SUITE=libero_goal TASK=<番号>
 
 1. teleop を起動し（`make -C teleop teleop`、[teleop/README.md](../../teleop/README.md)）、窓を大きめにしておく。
 2. `⌘⇧5` で「選択部分を収録」を選び、teleop の窓だけを囲んで収録する。
-3. 撮った `.mov` を `assets/teleop/a.mov`・`b.mov` のように置き、`make norm` で `teleop_a.mp4`・`teleop_b.mp4` にする。
+3. 撮った `.mov` を `assets/teleop/` に置き（例 `a2.mov`・`b2.mov`）、[clips.json](clips.json) の `screens` に
+   元の録画・使う範囲（秒）・見出しを書いて `make parts` する。窓の範囲は黒い余白から自動で切り出し、元の音声は外す。
+
+2026-10-19 に撮ったもの：A は 2 本（a1・a2）、B は 2 本（b1・b2）。a2 のメニュー部分を A、b2 を B、
+ワインの瓶に当たった b1 を C に使った。a1・a2 は操作画面に切り替わると窓が広がって右端が枠から切れるので、メニューの部分だけを使う。
 
 - ナレーションは後から別に録って重ねるほうが、撮り直しが楽。収録中はマイクを切っておく。
 - B は何度か練習してから撮ると、迷いのない動きになって見やすい。途中で一時停止しない。
@@ -99,8 +104,8 @@ make -C teleop teleop SUITE=libero_goal TASK=<番号>
 ```bash
 cp local.mk.example local.mk   # 元動画の場所を書く（初回だけ。local.mk は Git 管理外）
 make collect                   # parc2026 の元動画を assets/parc2026/ へ写す（SSD をつないで、初回だけ）
-make parts                     # 後半のパーツを作る（PART=compare で 1 つだけ）
-make norm                      # assets/teleop/ の録画を 1920x1080・30fps にそろえる
+make parts                     # パーツを作る（PART=teleop_b で 1 つだけ。画面録画は clips.json の screens）
+make norm                      # 見出しを付けずに、assets/teleop/ の録画をそのまま 1920x1080・30fps にそろえる（任意）
 make sheet                     # パーツのコマを並べた確認用の画像（build/sheet/）
 make final                     # timeline.txt の順につなぐ → build/final.mp4
 make open                      # 見る

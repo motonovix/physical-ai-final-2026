@@ -4,9 +4,10 @@
 # title.mp4                # 0 タイトル（未）
 # pipeline.mp4             # 1 全体の流れ（未）
 #
-# 前半：Mac で teleop を動かしている様子の画面録画。assets/teleop/a.mov などに置いて make norm
-# teleop_a.mp4             # 2 操作環境（未）
-# teleop_b.mp4             # 3〜4 1 本解く・成功の判定と記録（未）
+# 前半：Mac で teleop を動かしている様子の画面録画（assets/teleop/ に置き、clips.json の screens に書いて make parts）
+teleop_a.mp4               # 2 課題を選ぶ
+teleop_b.mp4               # 3〜4 1 本解く・成功の判定と記録
+teleop_c.mp4               # うまくいかない例（ほかの物に当たった）
 #
 # training.mp4             # 5 学習へのつなぎ（未）
 #

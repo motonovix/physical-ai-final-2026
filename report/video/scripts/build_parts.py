@@ -1,7 +1,7 @@
 """最終課題の動画の素材をそろえ、パーツを組んで書き出す。
 
     collect  parc2026 の元動画を assets/parc2026/ へ写す（SSD をつないで一度だけ）
-    parts    assets/parc2026/ から後半のパーツを build/parts/ に作る
+    parts    assets/ の素材からパーツを build/parts/ に作る（画面録画は clips.json の screens）
     norm     assets/teleop/ の録画を、パーツと同じ形式にそろえて build/parts/ に置く
     sheet    パーツのコマを並べた確認用の画像を build/sheet/ に作る
     final    timeline.txt の順にパーツをつなぎ、build/final.mp4 に書き出す
@@ -60,7 +60,8 @@ def has_audio(path: Path) -> bool:
 def compose(out: Path, bg: Path, videos: list[tuple], badges: list[tuple], total: float) -> None:
     """背景の上に動画と札を重ねる。
 
-    videos: (path, speed, (x, y), (w, h))。最後のコマで止めたまま total まで伸ばす。
+    videos: (path, speed, (x, y), (w, h)[, 前処理])。最後のコマで止めたまま total まで伸ばす。
+        前処理は trim・crop など、速さを変える前に掛ける filter（省略可）。元の音声は使わない。
     badges: (png, (x, y), 出す時刻 s)。
     """
     t = f"{total:.3f}"
@@ -71,8 +72,9 @@ def compose(out: Path, bg: Path, videos: list[tuple], badges: list[tuple], total
         args += ["-loop", "1", "-framerate", FPS, "-t", t, "-i", png]
     args += SILENCE
     chains, last = [], "0:v"
-    for i, (_, speed, (x, y), (w, h)) in enumerate(videos, 1):
-        chains.append(f"[{i}:v]setpts=(PTS-STARTPTS)/{speed},fps={FPS},scale={w}:{h}:flags=lanczos,"
+    for i, (_, speed, (x, y), (w, h), *pre) in enumerate(videos, 1):
+        head = f"{pre[0]}," if pre else ""
+        chains.append(f"[{i}:v]{head}setpts=(PTS-STARTPTS)/{speed},fps={FPS},scale={w}:{h}:flags=lanczos,"
                       f"tpad=stop_mode=clone:stop_duration={t}[v{i}]")
         chains.append(f"[{last}][v{i}]overlay={x}:{y}[o{i}]")
         last = f"o{i}"
@@ -275,10 +277,52 @@ def part_results() -> None:
     compose(PARTS / "results.mp4", bg, [], [], 5.0)
 
 
+def window_box(path: Path, start: float, end: float) -> tuple[int, int, int, int]:
+    """録画のうち、黒い余白を除いた窓の範囲（w, h, x, y）。範囲内で一番多く出た値を使う。"""
+    out = subprocess.run(["ffmpeg", "-hide_banner", "-ss", f"{start:.3f}", "-to", f"{end:.3f}", "-i", str(path),
+                          "-vf", "cropdetect=limit=16:round=2:reset=0", "-f", "null", "-"],
+                         capture_output=True, text=True).stderr
+    boxes = [line.rsplit("crop=", 1)[1].strip() for line in out.splitlines() if "crop=" in line]
+    if not boxes:
+        raise SystemExit(f"{path.name}: 窓の範囲が分からない")
+    w, h, x, y = map(int, max(set(boxes), key=boxes.count).split(":"))
+    return w, h, x, y
+
+
+def part_screen(name: str, cfg: dict) -> None:
+    """自分で撮った画面録画を、窓だけ切り出して見出しの下に置く。元の音声は外す。"""
+    src = ASSETS / "teleop" / cfg["src"]
+    start, end = cfg.get("start", 0.0), cfg.get("end") or duration(src)
+    speed, hold = cfg.get("speed", 1.0), cfg.get("hold", 0.5)
+    cw, ch, cx, cy = window_box(src, start, end)
+    top, bottom, side = 170, 1050, 40
+    scale = min((W - 2 * side) / cw, (bottom - top) / ch)
+    w, h = int(cw * scale) // 2 * 2, int(ch * scale) // 2 * 2
+    x, y = (W - w) // 2, top + (bottom - top - h) // 2
+    img, dr = canvas()
+    dr.text((80, 40), cfg["title"], font=font(6, 46), fill=FG)
+    if cfg.get("sub"):
+        dr.text((80, 104), cfg["sub"], font=font(3, 30), fill=SUB)
+    note = cfg.get("note") or (f"{speed:g} 倍速" if speed != 1 else "等倍速")
+    dr.text((W - 80, 48), note, font=font(3, 28), fill=SUB, anchor="ra")
+    bg = TMP / f"{name}_bg.png"
+    img.save(bg)
+    pre = f"trim=start={start:.3f}:end={end:.3f},crop={cw}:{ch}:{cx}:{cy}"
+    compose(PARTS / f"{name}.mp4", bg, [(src, speed, (x, y), (w, h), pre)], [], (end - start) / speed + hold)
+
+
 def parts(args: argparse.Namespace) -> None:
     clips = json.loads((HERE / "clips.json").read_text())
     builders = {"smolvla": lambda: part_smolvla(clips), "compare": lambda: part_compare(clips),
                 "successes": lambda: part_successes(clips), "results": part_results}
+    for name, cfg in clips.get("screens", {}).items():
+        if (ASSETS / "teleop" / cfg["src"]).exists():
+            builders[name] = lambda name=name, cfg=cfg: part_screen(name, cfg)
+        else:
+            print(f"skip {name}: assets/teleop/{cfg['src']} が無い")
+    unknown = set(args.only or []) - set(builders)
+    if unknown:
+        raise SystemExit(f"知らないパーツ: {', '.join(sorted(unknown))}（選べるもの: {', '.join(builders)}）")
     for name in args.only or builders:
         builders[name]()
 
@@ -336,7 +380,7 @@ def main() -> None:
     c.add_argument("--post", required=True, help="VLADrop 追加学習後の結果フォルダ")
     c.add_argument("--smolvla", required=True, help="SmolVLA の 1 試行のフォルダ")
     p = sub.add_parser("parts")
-    p.add_argument("--only", nargs="*", choices=["smolvla", "compare", "successes", "results"])
+    p.add_argument("--only", nargs="*", help="作るパーツの名前（既定は全部。clips.json の screens も含む）")
     n = sub.add_parser("norm")
     n.add_argument("--force", action="store_true", help="作り済みでも作り直す")
     sub.add_parser("sheet")
