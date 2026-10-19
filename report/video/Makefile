@@ -5,6 +5,7 @@
 #   make norm        # assets/teleop/ に置いた録画を build/parts/teleop_*.mp4 にそろえる
 #   make sheet       # パーツのコマを並べた確認用の画像を build/sheet/ に作る
 #   make final       # timeline.txt の順につなぎ、build/final.mp4 に書き出す
+#   make thumbnail   # YouTube のサムネイルを build/thumbnail.jpg に作る
 
 HERE := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ROOT := $(abspath $(HERE)../..)
@@ -15,7 +16,7 @@ PY     ?= $(ROOT)/.venv/bin/python
 SCRIPT := $(HERE)scripts/build_parts.py
 PART   ?=
 
-.PHONY: help collect parts norm sheet final voices open clean
+.PHONY: help collect parts norm sheet final thumbnail voices open clean
 
 help:
 	@echo "make collect  -- parc2026 の元動画を assets/parc2026/ へ写す（local.mk に場所を書く）"
@@ -23,6 +24,7 @@ help:
 	@echo "make norm     -- assets/teleop/ の録画を 1920x1080・30fps にそろえる"
 	@echo "make sheet    -- パーツのコマを並べた確認用の画像を作る"
 	@echo "make final    [NARRATION=0] -- timeline.txt の順につなぎ、ナレーションを重ねて build/final.mp4 に書き出す"
+	@echo "make thumbnail -- YouTube のサムネイルを build/thumbnail.jpg に作る（clips.json の thumbnail）"
 	@echo "make voices   -- AivisSpeech に入っている声と style ID を並べる（アプリを起動しておく）"
 	@echo "make open     -- build/final.mp4 を開く"
 
@@ -43,6 +45,9 @@ sheet:
 
 final:
 	$(PY) $(SCRIPT) final $(if $(filter 0,$(NARRATION)),--no-narration)
+
+thumbnail:
+	$(PY) $(SCRIPT) thumbnail
 
 voices:
 	$(PY) $(SCRIPT) voices

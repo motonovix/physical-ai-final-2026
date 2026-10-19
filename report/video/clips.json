@@ -581,5 +581,44 @@
       }
     ],
     "foot": "Nintendo Switch は任天堂の商標、MacBook は Apple Inc. の商標です。\nその他の会社名・製品名は各社の商標または登録商標です。"
+  },
+  "thumbnail": {
+    "lines": [
+      "ゲームコントローラと",
+      "MacBook で始める"
+    ],
+    "main": "フィジカル AI",
+    "badge": "学習で成功 0 → 13（16 タスク中）",
+    "photo": {
+      "src": "setup.jpg",
+      "crop": [
+        1180,
+        0,
+        2688,
+        1512
+      ],
+      "brightness": 0.9,
+      "fade": 220
+    },
+    "screen": {
+      "src": "b2.mov",
+      "at": 9.0,
+      "crop": [
+        0.05,
+        0.11,
+        0.35,
+        0.74
+      ],
+      "w": 560,
+      "xy": [
+        1300,
+        70
+      ]
+    },
+    "top": 230,
+    "text_w": 800,
+    "size": 84,
+    "main_size": 170,
+    "badge_size": 44
   }
 }

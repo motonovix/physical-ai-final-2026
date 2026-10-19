@@ -130,6 +130,7 @@ make norm                      # 見出しを付けずに、assets/teleop/ の�
 make sheet                     # パーツのコマを並べた確認用の画像（build/sheet/）
 make final                     # timeline.txt の順につなぐ → build/final.mp4
 make open                      # 見る
+make thumbnail                 # YouTube のサムネイル → build/thumbnail.jpg
 ```
 
 `make collect` の後は SSD が無くても作り直せる。
@@ -185,14 +186,17 @@ YouTube の推奨に合わせ、すべてのパーツを同じ形式にそろえ
 ## 仕上げ
 
 - **ナレーション・BGM：** iMovie などで `build/final.mp4` に重ねるのが早い。仮の読み上げは `say -v Kyoko -o narration.aiff "..."` で作れる。
+- **サムネイル：** `make thumbnail` で `build/thumbnail.jpg`（1920x1080、2 MB 未満）を作り、YouTube Studio の「サムネイル」から上げる。
+  左に題名と結果（学習で成功 0 → 13、16 タスク中）、右に機材の写真（`assets/photo/setup.jpg`）を置き、写真の上に teleop の画面（b2 の 9 秒）を重ねる。
+  文字・写真の切り出し・重ねる画面の位置は clips.json の `thumbnail` で変える。
 - **アップロード：** YouTube へは自分のアカウントで上げる。公開範囲（限定公開など）は課題の指示に合わせる。
 
 ## ファイル
 
 | パス | 中身 |
 | :--- | :--- |
-| `Makefile` | collect / parts / norm / sheet / final |
-| `scripts/build_parts.py` | 素材を写す・パーツを組む・録画をそろえる・つなぐ |
+| `Makefile` | collect / parts / norm / sheet / final / thumbnail |
+| `scripts/build_parts.py` | 素材を写す・パーツを組む・録画をそろえる・つなぐ・サムネイルを作る |
 | `clips.json` | 後半で使う問題の番号と日本語の字幕 |
 | `timeline.txt` | パーツの並び |
 | `local.mk.example` | 元動画の場所の書き方（写して `local.mk` にする） |

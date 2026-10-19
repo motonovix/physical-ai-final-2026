@@ -5,6 +5,7 @@
     norm     assets/teleop/ の録画を、パーツと同じ形式にそろえて build/parts/ に置く
     sheet    パーツのコマを並べた確認用の画像を build/sheet/ に作る
     final    timeline.txt の順にパーツをつなぎ、build/final.mp4 に書き出す
+    thumbnail  YouTube のサムネイルを build/thumbnail.jpg に作る（clips.json の thumbnail）
 
 パーツはすべて 1920x1080・30fps・H.264 / AAC 48 kHz ステレオ（無音の音声つき）にそろえる。
 手順と構成の正本は ../README.md。
@@ -688,6 +689,69 @@ def part_credits(cfg: dict) -> None:
     compose(PARTS / "credits.mp4", bg, [], [], cfg.get("seconds", 7.0), fade_in=0.4, fade_out=0.8)
 
 
+def fit(text: str, weight: int, size: int, width: int) -> ImageFont.FreeTypeFont:
+    """width に収まるまで文字を小さくする。"""
+    while font(weight, size).getlength(text) > width and size > 20:
+        size -= 2
+    return font(weight, size)
+
+
+def thumbnail(args: argparse.Namespace) -> None:
+    """YouTube のサムネイル（1920x1080 の JPEG）。左に題名、右に機材の写真、写真の上に teleop の画面を重ねる。"""
+    cfg = json.loads((HERE / "clips.json").read_text())["thumbnail"]
+    img, d = canvas()
+    # 右：機材の写真。左の端は背景の色へぼかして溶かす
+    p = cfg["photo"]
+    photo = ImageOps.exif_transpose(Image.open(ASSETS / "photo" / p["src"])).convert("RGB").crop(p["crop"])
+    photo = photo.resize((round(photo.width * H / photo.height), H), Image.LANCZOS)
+    photo = ImageEnhance.Brightness(photo).enhance(p.get("brightness", 0.9))
+    fade = p.get("fade", 320)
+    mask = Image.new("L", photo.size, 255)
+    md = ImageDraw.Draw(mask)
+    for x in range(fade):
+        md.line((x, 0, x, H), fill=round(255 * (x / fade) ** 1.5))
+    img.paste(photo, (W - photo.width, 0), mask)
+    # 写真の上に teleop の画面（正面のカメラ）を角丸の枠で重ねる
+    s = cfg.get("screen")
+    if s and (ASSETS / "teleop" / s["src"]).exists():
+        shot = frame_of(ASSETS / "teleop" / s["src"], s["at"], TMP / "thumbnail_shot.png")
+        fx0, fy0, fx1, fy1 = s["crop"]                      # 窓に対する割合
+        shot = shot.crop((round(shot.width * fx0), round(shot.height * fy0),
+                          round(shot.width * fx1), round(shot.height * fy1)))
+        sw = s["w"]
+        shot = shot.resize((sw, round(shot.height * sw / shot.width)), Image.LANCZOS)
+        sx, sy = s["xy"]
+        round_mask = Image.new("L", shot.size, 0)
+        ImageDraw.Draw(round_mask).rounded_rectangle((0, 0, *shot.size), radius=24, fill=255)
+        shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        ImageDraw.Draw(shadow).rounded_rectangle((sx + 10, sy + 14, sx + shot.width + 10, sy + shot.height + 14),
+                                                 radius=24, fill=(0, 0, 0, 170))
+        img.paste(Image.new("RGB", (W, H), (0, 0, 0)), (0, 0), shadow.filter(ImageFilter.GaussianBlur(14)))
+        img.paste(shot, (sx, sy), round_mask)
+        d.rounded_rectangle((sx - 3, sy - 3, sx + shot.width + 3, sy + shot.height + 3), radius=26,
+                            outline=FG, width=5)
+    # 左：題名。縁取りで写真に重なっても読めるようにする
+    x, y, width = 90, cfg.get("top", 150), cfg.get("text_w", 980)
+    for line in cfg["lines"]:
+        f = fit(line, 8, cfg.get("size", 104), width)
+        d.text((x, y), line, font=f, fill=FG, stroke_width=8, stroke_fill=BG)
+        y += round(f.size * 1.28)
+    y += 10
+    f = fit(cfg["main"], 8, cfg.get("main_size", 190), width)
+    d.text((x, y), cfg["main"], font=f, fill=tuple(cfg.get("main_color", (255, 205, 50))),
+           stroke_width=10, stroke_fill=BG)
+    y += round(f.size * 1.45)
+    if cfg.get("badge"):
+        f = font(6, cfg.get("badge_size", 50))
+        pad_x, pad_y = 34, 20
+        bw, bh = f.getlength(cfg["badge"]) + 2 * pad_x, f.size + 2 * pad_y
+        d.rounded_rectangle((x, y, x + bw, y + bh), radius=bh // 4, fill=OK)
+        d.text((x + bw / 2, y + bh / 2), cfg["badge"], font=f, fill=(255, 255, 255), anchor="mm")
+    out = BUILD / "thumbnail.jpg"
+    img.save(out, quality=92)
+    print(f"wrote {out.relative_to(HERE)}  {out.stat().st_size / 1e6:.2f} MB")
+
+
 def parts(args: argparse.Namespace) -> None:
     clips = json.loads((HERE / "clips.json").read_text())
     builders = {"smolvla": lambda: part_smolvla(clips), "compare": lambda: part_compare(clips),
@@ -894,10 +958,12 @@ def main() -> None:
     sub.add_parser("voices", help="AivisSpeech に入っている声と話し方（style ID）を並べる")
     f = sub.add_parser("final")
     f.add_argument("--no-narration", action="store_true", help="ナレーションを入れずにつなぐ")
+    sub.add_parser("thumbnail", help="YouTube のサムネイルを build/thumbnail.jpg に作る")
     args = ap.parse_args()
     for d in (PARTS, TMP):
         d.mkdir(parents=True, exist_ok=True)
-    {"collect": collect, "parts": parts, "norm": norm, "sheet": sheet, "final": final, "voices": voices}[args.cmd](args)
+    {"collect": collect, "parts": parts, "norm": norm, "sheet": sheet, "final": final, "voices": voices,
+     "thumbnail": thumbnail}[args.cmd](args)
 
 
 if __name__ == "__main__":
