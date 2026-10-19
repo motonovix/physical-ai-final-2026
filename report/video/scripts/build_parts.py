@@ -389,8 +389,10 @@ def part_title(cfg: dict, name: str = "title") -> None:
     if cfg.get("url"):
         d.text((W // 2, y), cfg["url"], font=font(6, 44), fill=(92, 170, 220), anchor="mm")
         y += 80
-    if cfg.get("foot"):
-        d.text((W // 2, y), cfg["foot"], font=font(3, 30), fill=SUB, anchor="mm")
+    for line in (cfg.get("foot") or "").split("\n"):     # 添え書きは改行で複数行にできる
+        if line:
+            d.text((W // 2, y), line, font=font(3, 30), fill=SUB, anchor="mm")
+            y += 44
     bg = TMP / f"{name}_bg.png"
     img.save(bg)
     compose(PARTS / f"{name}.mp4", bg, [], [], cfg.get("seconds", 2.0),
