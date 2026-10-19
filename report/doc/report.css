@@ -87,3 +87,14 @@ th { background: var(--soft); font-weight: 600; }
 
 .credits { font-size: .82rem; color: var(--muted); line-height: 1.45; }
 .credits p { margin: .2em 0; text-align: left; }
+
+/* 使用したソフトウェア・モデルの表と参考文献（論文の書き方：番号付き、ぶら下げ字下げ） */
+table.sw { font-size: .8rem; }
+table.sw td:nth-child(1) { white-space: nowrap; font-weight: 600; }
+table.sw td:last-child, table.sw th:last-child { white-space: nowrap; text-align: center; }
+ol.refs { list-style: none; counter-reset: ref; padding-left: 0; margin: .3em 0; font-size: .82rem; line-height: 1.45; }
+ol.refs li { counter-increment: ref; position: relative; padding-left: 2.2em; margin: .2em 0; text-align: left; }
+ol.refs li::before { content: "[" counter(ref) "]"; position: absolute; left: 0; color: var(--muted); }
+table.results td:first-child { white-space: nowrap; }
+/* 使用したソフトウェアと参考文献は、まとめて最後のページに置く */
+@media print { h2.new-page { break-before: page; margin-top: 0; } }

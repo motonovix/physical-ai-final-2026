@@ -28,8 +28,8 @@
 <h2>1. 概要</h2>
 <p>
   手元の MacBook とゲームコントローラ（Nintendo Switch Pro コントローラ）だけで、シミュレータ上のロボットアームを人が操作し（テレオペ）、
-  その操作の記録を教師データにして VLA（Vision-Language-Action モデル）を追加学習し、シミュレータで評価した。
-  シミュレータは LIBERO-Plus（MuJoCo / robosuite）で、テレオペの環境は Claude Code と対話しながら自作した。
+  その操作の記録を教師データにして VLA（Vision-Language-Action モデル）である SmolVLA [6] と π0.5 [7] を追加学習し、シミュレータで評価した。
+  シミュレータは LIBERO [1] を拡張したベンチマークの LIBERO-Plus [2]（物理エンジンは MuJoCo [3]、ロボット環境は robosuite [4]）で、テレオペの環境は Claude Code と対話しながら自作した。
 </p>
 <div class="flow">
   <div class="step"><b>① テレオペ</b><span>MacBook＋コントローラ<br>Claude Code で自作</span></div>
@@ -42,7 +42,7 @@
 </div>
 <p>
   テレオペの命令は、VLA が出す命令と同じ形（20 Hz、手先の移動 3 軸＋回転 3 軸＋グリッパ）にした。
-  記録はシミュレータの状態と命令の列だけを持ち、学習用の画像（正面と手首の 2 カメラ）は後から描き直す。
+  記録はシミュレータの状態と命令の列だけを持ち、学習用の画像（正面と手首の 2 カメラ）は後から描き直して LeRobot [5] の形式にする。
   ゴールの条件が成り立ち、かつ対象外の物を 1 mm 以上動かしていないときだけ成功と判定する。
 </p>
 
@@ -112,15 +112,15 @@
 </div>
 
 <h2>3. 学習と評価の結果</h2>
-<table>
+<table class="results">
   <tr><th>モデル</th><th>教師データと学習</th><th>評価</th></tr>
   <tr>
-    <td>SmolVLA</td>
+    <td>SmolVLA [6]</td>
     <td>人がテレオペで解いた 18 本（赤いマグを皿から戻すタスク）。Colab の L4 で LoRA（r16）を 1,000 step。</td>
     <td>学習に使った初期配置で 1 試行し、成功。条件を変えた別の 2 試行は時間内に届かず、汎化は未確認。</td>
   </tr>
   <tr>
-    <td>π0.5</td>
+    <td>π0.5 [7]</td>
     <td>π0.5 の軽量版（言語モデルの層を半分に減らしたもの）を起点に、元の LIBERO のタスクを逆向きにしたタスクの教師データ（415 episode）で全体を 600 step。Colab の A100 で約 22 分。</td>
     <td>逆向きの 16 タスク（8 種 × 指示文 2 通り）を各 1 試行。<strong>学習前 0/16 → 学習後 13/16</strong>（ほかの物を動かさずに成功したのは 8）。</td>
   </tr>
@@ -133,12 +133,35 @@
   <li><strong>接触と汎化。</strong>成功した 13 タスクのうち 5 タスクはほかの物にも当たっていた。学習と評価の初期配置も重なっているので、未知の配置で解けるかを確かめる。</li>
 </ul>
 
-<h2>5. 使ったもの</h2>
-<div class="credits">
-  <p>シミュレータ・モデル・学習：LIBERO（MIT License、データセットは CC BY 4.0）、LIBERO-Plus（Fei et al., 2025）、robosuite（MIT License）、MuJoCo（Apache-2.0）、LeRobot（Apache-2.0）、SmolVLA（Apache-2.0）、π0.5 / openpi（Physical Intelligence、Apache-2.0。重みは PaliGemma が基で Gemma の利用規約に従う）、pygame、OpenCV、Google Colab。</p>
-  <p>開発・動画制作：Claude Code（Anthropic）、AivisSpeech: まお（Aivis Common Model License 1.0）、FFmpeg、Pillow、Pygments。</p>
-  <p>Nintendo Switch は任天堂の商標、MacBook は Apple Inc. の商標です。その他の会社名・製品名は各社の商標または登録商標です。</p>
-</div>
+<h2 class="new-page">5. 使用したソフトウェア・モデル</h2>
+<table class="sw">
+  <tr><th>名称</th><th>用途</th><th>版・入手先</th><th>ライセンス</th><th>文献</th></tr>
+  <tr><td>LIBERO</td><td>ベンチマーク</td><td>github.com/Lifelong-Robot-Learning/LIBERO</td><td>MIT（データセットは CC BY 4.0）</td><td>[1]</td></tr>
+  <tr><td>LIBERO-Plus</td><td>シミュレータのタスク</td><td>github.com/sylvestf/LIBERO-plus（commit 4976dc3）</td><td>記載なし</td><td>[2]</td></tr>
+  <tr><td>MuJoCo</td><td>物理エンジン</td><td>3.7.0</td><td>Apache-2.0</td><td>[3]</td></tr>
+  <tr><td>robosuite</td><td>ロボット環境</td><td>1.4.0</td><td>MIT</td><td>[4]</td></tr>
+  <tr><td>LeRobot</td><td>データ形式・学習</td><td>0.6.0</td><td>Apache-2.0</td><td>[5]</td></tr>
+  <tr><td>SmolVLA</td><td>VLA</td><td>lerobot/smolvla_libero_plus（Hugging Face）</td><td>Apache-2.0</td><td>[6]</td></tr>
+  <tr><td>π0.5 / openpi</td><td>VLA</td><td>github.com/Physical-Intelligence/openpi</td><td>Apache-2.0。π0.5 は PaliGemma [8] が基で、その重みには Gemma Terms of Use が適用される</td><td>[7]</td></tr>
+  <tr><td>pygame / OpenCV</td><td>teleop の入力・表示</td><td>2.6.1 / 4.11.0</td><td>LGPL-2.1 / Apache-2.0</td><td>—</td></tr>
+  <tr><td>Claude Code</td><td>teleop 環境・動画の作成</td><td>Anthropic</td><td>Anthropic の利用規約</td><td>—</td></tr>
+  <tr><td>AivisSpeech</td><td>動画のナレーション（声：まお）</td><td>Aivis Project</td><td>LGPL-3.0（声のモデルは Aivis Common Model License 1.0）</td><td>—</td></tr>
+  <tr><td>FFmpeg / Pillow / Pygments</td><td>動画・図の作成</td><td>8.1.2 / 12.3.0 / 2.21.0</td><td>LGPL-2.1+・GPL-2.0+ / MIT-CMU / BSD-2-Clause</td><td>—</td></tr>
+  <tr><td>Google Colab</td><td>学習の GPU（A100・L4）</td><td>Google</td><td>Google の利用規約</td><td>—</td></tr>
+</table>
+
+<h2>参考文献</h2>
+<ol class="refs">
+  <li>B. Liu, Y. Zhu, C. Gao, Y. Feng, Q. Liu, Y. Zhu, and P. Stone, “LIBERO: Benchmarking Knowledge Transfer for Lifelong Robot Learning,” in <i>Advances in Neural Information Processing Systems (NeurIPS), Datasets and Benchmarks Track</i>, 2023. arXiv:2306.03310.</li>
+  <li>S. Fei, S. Wang, J. Shi, Z. Dai, J. Cai, P. Qian, L. Ji, X. He, S. Zhang, Z. Fei, J. Fu, J. Gong, and X. Qiu, “LIBERO-Plus: In-depth Robustness Analysis of Vision-Language-Action Models,” arXiv:2510.13626, 2025.</li>
+  <li>E. Todorov, T. Erez, and Y. Tassa, “MuJoCo: A physics engine for model-based control,” in <i>Proc. IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)</i>, 2012, pp. 5026–5033.</li>
+  <li>Y. Zhu, J. Wong, A. Mandlekar, R. Martín-Martín, A. Joshi, K. Lin, A. Maddukuri, S. Nasiriany, and Y. Zhu, “robosuite: A Modular Simulation Framework and Benchmark for Robot Learning,” arXiv:2009.12293, 2020.</li>
+  <li>R. Cadene, S. Alibert, A. Soare, Q. Gallouedec, A. Zouitine, S. Palma, P. Kooijmans, M. Aractingi, M. Shukor, D. Aubakirova, M. Russi, F. Capuano, C. Pascal, J. Choghari, K. Meftah, M. Ellerbach, J. Moss, and T. Wolf, “LeRobot: State-of-the-art Machine Learning for Real-World Robotics in Pytorch,” 2024. [Online]. Available: https://github.com/huggingface/lerobot</li>
+  <li>M. Shukor, D. Aubakirova, F. Capuano, P. Kooijmans, S. Palma, A. Zouitine, M. Aractingi, C. Pascal, M. Russi, A. Marafioti, S. Alibert, M. Cord, T. Wolf, and R. Cadene, “SmolVLA: A Vision-Language-Action Model for Affordable and Efficient Robotics,” arXiv:2506.01844, 2025.</li>
+  <li>Physical Intelligence, K. Black, N. Brown, J. Darpinian, K. Dhabalia, D. Driess, A. Esmail, <i>et al.</i>, “π0.5: a Vision-Language-Action Model with Open-World Generalization,” arXiv:2504.16054, 2025.</li>
+  <li>L. Beyer, A. Steiner, A. S. Pinto, <i>et al.</i>, “PaliGemma: A versatile 3B VLM for transfer,” arXiv:2407.07726, 2024.</li>
+</ol>
+<p class="credits">Nintendo Switch は任天堂の商標、MacBook は Apple Inc. の商標です。その他の会社名・製品名は各社の商標または登録商標です。</p>
 
 </body>
 </html>
