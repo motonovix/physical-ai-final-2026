@@ -4,6 +4,7 @@
 title.mp4                  # 0 タイトル（2 秒）
 overview.mp4               # 1 全体の流れ（図、6 秒）
 photo.mp4                  # 1′ 機材の写真（assets/photo/setup.jpg、3 秒）
+controller.mp4             # 1″ 操作方法（コントローラの写真に注釈、8 秒）
 #
 # 前半：Mac で teleop を動かしている様子の画面録画（assets/teleop/ に置き、clips.json の screens に書いて make parts）
 teleop_a.mp4               # 2 課題を選ぶ

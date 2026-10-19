@@ -52,6 +52,183 @@
     "title": "使う機材",
     "sub": "Nintendo Switch Pro コントローラ（Bluetooth でつなぐ）と、teleop を動かしている MacBook"
   },
+  "controller": {
+    "src": "controller.jpg",
+    "crop": [
+      442,
+      211,
+      2246,
+      1344
+    ],
+    "photo_xy": [
+      550,
+      330
+    ],
+    "photo_w": 820,
+    "title": "操作方法：手先の 6 軸＋グリッパを、コントローラで同時に動かす",
+    "sub": "スティックの倒し具合が、そのまま動く速さになる",
+    "shoulders": {
+      "ZL": [
+        745,
+        196,
+        845,
+        236
+      ],
+      "L": [
+        745,
+        244,
+        845,
+        284
+      ],
+      "ZR": [
+        1065,
+        196,
+        1165,
+        236
+      ],
+      "R": [
+        1065,
+        244,
+        1165,
+        284
+      ]
+    },
+    "legend_y": 960,
+    "seconds": 8.0,
+    "groups": [
+      {
+        "legend": "移動（X・Y・Z）",
+        "color": [
+          92,
+          170,
+          220
+        ],
+        "at": 0.6,
+        "labels": [
+          {
+            "head": "左スティック",
+            "text": "前後・左右に動かす（X・Y）",
+            "side": "left",
+            "at": [
+              520,
+              445
+            ],
+            "target": [
+              979,
+              470
+            ]
+          },
+          {
+            "head": "右スティック 上下",
+            "text": "上下に動かす（Z）",
+            "side": "right",
+            "at": [
+              1400,
+              545
+            ],
+            "target": [
+              1530,
+              605
+            ]
+          }
+        ]
+      },
+      {
+        "legend": "回転（roll・pitch・yaw）",
+        "color": [
+          240,
+          150,
+          60
+        ],
+        "at": 2.6,
+        "draw_shoulders": [
+          "ZL",
+          "L",
+          "ZR",
+          "R"
+        ],
+        "shoulder_note": {
+          "text": "上の縁のボタン",
+          "at": [
+            955,
+            240
+          ]
+        },
+        "labels": [
+          {
+            "head": "ZL・ZR",
+            "text": "前後に傾ける（pitch）",
+            "side": "left",
+            "at": [
+              520,
+              225
+            ],
+            "target": "ZL"
+          },
+          {
+            "head": "L・R",
+            "text": "左右に傾ける（roll）",
+            "side": "right",
+            "at": [
+              1400,
+              280
+            ],
+            "target": "R"
+          },
+          {
+            "head": "右スティック 左右",
+            "text": "水平に回す（yaw）",
+            "side": "right",
+            "at": [
+              1400,
+              690
+            ],
+            "target": [
+              1595,
+              705
+            ]
+          },
+          {
+            "head": "十字キー",
+            "text": "傾ける（上下＝pitch、左右＝roll）",
+            "side": "left",
+            "at": [
+              520,
+              640
+            ],
+            "target": [
+              1142,
+              653
+            ]
+          }
+        ]
+      },
+      {
+        "legend": "グリッパ（開閉）",
+        "color": [
+          80,
+          190,
+          110
+        ],
+        "at": 4.6,
+        "labels": [
+          {
+            "head": "Y・B",
+            "text": "グリッパを閉じる・開く",
+            "side": "right",
+            "at": [
+              1400,
+              410
+            ],
+            "target": [
+              1672,
+              527
+            ]
+          }
+        ]
+      }
+    ]
+  },
   "training": {
     "lead": "③ VLA の追加学習は、Google Colab の GPU で行った",
     "steps": [

@@ -492,6 +492,72 @@ def part_code(cfg: dict) -> None:
     compose(PARTS / "code.mp4", bg, [], badges, total)
 
 
+def part_controller(cfg: dict) -> None:
+    """コントローラの写真に、操作の割り当てを色分けして書き込む。
+
+    写真は crop（元画像の px）で切り出して置く。注釈は groups ごとの層にして、at 秒で順に出す。
+    target は元画像の px か、肩のボタンの名前（写真に写らないので、上に四角で描き足す）。
+    """
+    src = ASSETS / "photo" / cfg["src"]
+    photo = ImageOps.exif_transpose(Image.open(src)).convert("RGB")
+    cx0, cy0, cx1, cy1 = cfg["crop"]
+    px, py, pw = cfg["photo_xy"][0], cfg["photo_xy"][1], cfg["photo_w"]
+    scale = pw / (cx1 - cx0)
+    ph = round((cy1 - cy0) * scale)
+    photo = photo.crop((cx0, cy0, cx1, cy1)).resize((pw, ph), Image.LANCZOS)
+    img, dr = canvas()
+    dr.text((80, 40), cfg["title"], font=font(6, 46), fill=FG)
+    dr.text((80, 104), cfg["sub"], font=font(3, 30), fill=SUB)
+    img.paste(photo, (px, py))
+    bg = TMP / "controller_bg.png"
+    img.save(bg)
+
+    def to_frame(pt):
+        return px + (pt[0] - cx0) * scale, py + (pt[1] - cy0) * scale
+
+    boxes = {name: tuple(b) for name, b in cfg["shoulders"].items()}     # 名前 -> 画面上の (x0, y0, x1, y1)
+    legend_font = font(6, 30)
+    legend_w = [44 + legend_font.getlength(g["legend"]) for g in cfg["groups"]]
+    lx = (W - sum(legend_w) - 60 * (len(legend_w) - 1)) / 2
+    badges = []
+    for gi, group in enumerate(cfg["groups"]):
+        color = tuple(group["color"])
+        layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        d = ImageDraw.Draw(layer)
+        for name in group.get("draw_shoulders", []):
+            x0, y0, x1, y1 = boxes[name]
+            d.rounded_rectangle(boxes[name], radius=12, fill=(30, 34, 42, 255), outline=color, width=3)
+            d.text(((x0 + x1) / 2, (y0 + y1) / 2), name, font=font(6, 26), fill=FG, anchor="mm")
+        if group.get("shoulder_note"):
+            note = group["shoulder_note"]
+            d.text((note["at"][0], note["at"][1]), note["text"], font=font(3, 24), fill=SUB, anchor="mm")
+        for label in group["labels"]:
+            ax, ay = label["at"]
+            left = label["side"] == "left"
+            anchor_h = "r" if left else "l"
+            d.text((ax, ay), label["head"], font=font(6, 32), fill=color, anchor=anchor_h + "s")
+            d.text((ax, ay + 40), label["text"], font=font(3, 28), fill=FG, anchor=anchor_h + "s")
+            target = label["target"]
+            if isinstance(target, str):                    # 肩のボタン：四角の内側の端へ
+                x0, y0, x1, y1 = boxes[target]
+                tx, ty = (x0 if left else x1), (y0 + y1) / 2
+            else:
+                tx, ty = to_frame(target)
+            sx = ax + (14 if left else -14)
+            sy = ay - 10
+            d.line((sx, sy, tx, ty), fill=(0, 0, 0, 200), width=8)
+            d.line((sx, sy, tx, ty), fill=color, width=4)
+            if not isinstance(target, str):
+                d.ellipse((tx - 11, ty - 11, tx + 11, ty + 11), fill=color, outline=(255, 255, 255), width=3)
+        x = lx + sum(legend_w[:gi]) + 60 * gi
+        d.rounded_rectangle((x, cfg["legend_y"] - 15, x + 30, cfg["legend_y"] + 15), radius=6, fill=color)
+        d.text((x + 44, cfg["legend_y"]), group["legend"], font=legend_font, fill=FG, anchor="lm")
+        png = TMP / f"controller_{gi}.png"
+        layer.save(png)
+        badges.append((png, (0, 0), group["at"]))
+    compose(PARTS / "controller.mp4", bg, [], badges, cfg.get("seconds", 8.0))
+
+
 def part_photo(cfg: dict) -> None:
     """機材の写真を見出しの下に置く。HEIC は sips で JPEG にしてから読む。"""
     src = ASSETS / "photo" / cfg["src"]
@@ -523,6 +589,8 @@ def parts(args: argparse.Namespace) -> None:
     for name in ("overview", "training"):
         if name in clips:
             builders[name] = lambda name=name: part_overview(clips[name], name)
+    if "controller" in clips and (ASSETS / "photo" / clips["controller"]["src"]).exists():
+        builders["controller"] = lambda: part_controller(clips["controller"])
     if "code" in clips:
         builders["code"] = lambda: part_code(clips["code"])
     if "photo" in clips:
