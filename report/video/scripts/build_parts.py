@@ -243,7 +243,7 @@ def part_compare(clips: dict) -> None:
     d_pre, d_post = duration(pre.with_suffix(".mp4")), duration(post.with_suffix(".mp4"))
     total = max(d_pre, d_post) / speed + 2.0
     img, dr = canvas()
-    header(dr, "追加学習の前と後（同じ問題・同じ初期配置）", clips["captions"][str(task)],
+    header(dr, "追加学習の前と後（同じタスク・同じ初期配置）", clips["captions"][str(task)],
            ep_post["instruction"], note=f"π0.5・{speed:g} 倍速")
     size, gap = 720, 80
     xs = [(W - 2 * size - gap) // 2, (W + gap) // 2]
@@ -268,7 +268,7 @@ def part_successes(clips: dict) -> None:
     x0 = (W - n * size - (n - 1) * gap) // 2
     y = 330
     img, dr = canvas()
-    header(dr, "追加学習の後：解けた問題の例", "π0.5 を、逆向きの課題の教師データで追加学習",
+    header(dr, "追加学習の後：解けたタスクの例", "π0.5 を、逆向きのタスクの教師データで追加学習",
            note="等倍速・各 1 試行")
     videos, badges = [], []
     for i, task in enumerate(tasks):
@@ -298,12 +298,12 @@ def part_results() -> None:
     pre, post = (json.loads((ASSETS / "parc2026" / s / "summary.json").read_text())
                  for s in ("vladrop_pre", "vladrop_post"))
     img, dr = canvas()
-    header(dr, "結果：逆向きの課題 16 問（各 1 試行）",
-           "元の LIBERO の課題を逆向きにした 8 種 × 指示文 2 通り（原文・言い換え）", note="π0.5")
+    header(dr, "結果：逆向きの 16 タスク（各 1 試行）",
+           "元の LIBERO のタスクを逆向きにした 8 種 × 指示文 2 通り（原文・言い換え）", note="π0.5")
     for cx, label, s, color in ((W // 4 + 80, "追加学習の前", pre, NG), (3 * W // 4 - 80, "追加学習の後", post, OK)):
         dr.text((cx, 380), label, font=font(6, 48), fill=FG, anchor="mm")
         dr.text((cx, 560), f"{s['success']} / {s['episodes']}", font=font(6, 180), fill=color, anchor="mm")
-        dr.text((cx, 720), f"ほかの物を動かさずに成功：{s['safe_success']} 問", font=font(3, 36), fill=SUB, anchor="mm")
+        dr.text((cx, 720), f"ほかの物を動かさずに成功：{s['safe_success']} タスク", font=font(3, 36), fill=SUB, anchor="mm")
     dr.text((W // 2, 960), "成功：BDDL のゴール条件が成り立つ。ほかの物：対象外の物体が 1 mm 以上動いたかどうか",
             font=font(3, 28), fill=SUB, anchor="mm")
     bg = TMP / "results_bg.png"
