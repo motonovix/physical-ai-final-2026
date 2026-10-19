@@ -10,3 +10,5 @@ dataset/build/
 report/video/assets/
 report/video/build/
 report/video/local.mk
+# 講座の配布物（課題の公式の説明文など）。public のリポジトリに入れないので手元だけに置く
+report/official/
