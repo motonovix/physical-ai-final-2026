@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -63,7 +64,7 @@ def compose(out: Path, bg: Path, videos: list[tuple], badges: list[tuple], total
 
     videos: (path, speed, (x, y), (w, h)[, 前処理])。最後のコマで止めたまま total まで伸ばす。
         前処理は trim・crop など、速さを変える前に掛ける filter（省略可）。元の音声は使わない。
-    badges: (png, (x, y), 出す時刻 s)。
+    badges: (png, (x, y), 出す時刻 s)。時刻を (出す s, 消す s) にすると、その間だけ出す。
     fade_in: 頭を黒から浮かび上がらせる秒数。
     """
     t = f"{total:.3f}"
@@ -81,8 +82,9 @@ def compose(out: Path, bg: Path, videos: list[tuple], badges: list[tuple], total
         chains.append(f"[{last}][v{i}]overlay={x}:{y}[o{i}]")
         last = f"o{i}"
     first = 1 + len(videos)
-    for j, (_, (x, y), t0) in enumerate(badges):
-        chains.append(f"[{last}][{first + j}:v]overlay={x}:{y}:enable='gte(t,{t0:.3f})'[b{j}]")
+    for j, (_, (x, y), when) in enumerate(badges):
+        cond = f"between(t,{when[0]:.3f},{when[1]:.3f})" if isinstance(when, tuple) else f"gte(t,{when:.3f})"
+        chains.append(f"[{last}][{first + j}:v]overlay={x}:{y}:enable='{cond}'[b{j}]")
         last = f"b{j}"
     fade = f"fade=t=in:st=0:d={fade_in:.3f}," if fade_in else ""
     chains.append(f"[{last}]{fade}format=yuv420p[vout]")
@@ -98,18 +100,24 @@ def font(weight: int, size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(FONT_DIR / f"ヒラギノ角ゴシック W{weight}.ttc"), size)
 
 
+NO_HEAD = set("、。，．）」』】・ー")   # 行の頭に来させない文字
+
+
 def wrap(text: str, f: ImageFont.FreeTypeFont, width: int) -> list[str]:
-    """英文は単語、日本語は文字で折り返す。"""
-    units, sep = (text.split(" "), " ") if text.isascii() else (list(text), "")
-    lines, cur = [], ""
-    for u in units:
-        trial = f"{cur}{sep}{u}" if cur else u
-        if f.getlength(trial) <= width or not cur:
-            cur = trial
-        else:
-            lines.append(cur)
-            cur = u
-    return [*lines, cur] if cur else lines
+    """英単語は切らずに、日本語は文字で折り返す。「\n」はそこで改行する。"""
+    lines = []
+    for para in text.split("\n"):
+        units = re.findall(r"[!-~]+|\s+|.", para)   # 英数字の並び・空白・それ以外の 1 文字
+        cur = ""
+        for u in units:
+            trial = cur + u
+            if f.getlength(trial.strip()) <= width or not cur.strip() or u.isspace() or u in NO_HEAD:
+                cur = trial
+            else:
+                lines.append(cur.strip())
+                cur = u
+        lines.append(cur.strip())
+    return lines
 
 
 def canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
@@ -136,6 +144,22 @@ def badge(path: Path, text: str, color: tuple, size: int = 44) -> tuple[Path, in
     d = ImageDraw.Draw(img)
     d.rounded_rectangle((0, 0, w - 1, h - 1), radius=h // 4, fill=(*color, 235))
     d.text((w / 2, h / 2), text, font=f, fill=(255, 255, 255), anchor="mm")
+    img.save(path)
+    return path, w, h
+
+
+def caption(path: Path, text: str, max_w: int, size: int = 38) -> tuple[Path, int, int]:
+    """画面録画に重ねるテロップ。半透明の黒い帯に白い文字、max_w を超えたら折り返す。"""
+    f = font(6, size)
+    pad_x, pad_y, gap = 36, 18, int(size * 0.45)
+    lines = wrap(text, f, max_w - 2 * pad_x)
+    w = int(max(f.getlength(line) for line in lines) + 2 * pad_x)
+    h = int(len(lines) * size + (len(lines) - 1) * gap + 2 * pad_y)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle((0, 0, w - 1, h - 1), radius=14, fill=(8, 10, 14, 215))
+    for i, line in enumerate(lines):
+        d.text((w / 2, pad_y + i * (size + gap)), line, font=f, fill=(255, 255, 255), anchor="ma")
     img.save(path)
     return path, w, h
 
@@ -310,8 +334,13 @@ def part_screen(name: str, cfg: dict) -> None:
     dr.text((W - 80, 48), note, font=font(3, 28), fill=SUB, anchor="ra")
     bg = TMP / f"{name}_bg.png"
     img.save(bg)
+    total = (end - start) / speed + hold
+    badges = []
+    for i, cap in enumerate(cfg.get("captions", [])):
+        png, bw, bh = caption(TMP / f"{name}_cap{i}.png", cap["text"], min(w - 80, 1500))
+        badges.append((png, ((W - bw) // 2, y + h - bh - 28), (cap["from"], cap.get("to", total))))
     pre = f"trim=start={start:.3f}:end={end:.3f},crop={cw}:{ch}:{cx}:{cy}"
-    compose(PARTS / f"{name}.mp4", bg, [(src, speed, (x, y), (w, h), pre)], [], (end - start) / speed + hold)
+    compose(PARTS / f"{name}.mp4", bg, [(src, speed, (x, y), (w, h), pre)], badges, total)
 
 
 def frame_of(src: Path, at: float, out: Path) -> Image.Image:
@@ -349,6 +378,46 @@ def part_title(cfg: dict) -> None:
     compose(PARTS / "title.mp4", bg, [], [], cfg.get("seconds", 2.0), fade_in=0.3)
 
 
+def part_overview(cfg: dict) -> None:
+    """全体の流れの図。見出しの後、四角を左から順に出す。"""
+    img, dr = canvas()
+    dr.text((W // 2, 215), cfg["lead"], font=font(6, 50), fill=FG, anchor="mm")
+    steps = cfg["steps"]
+    n, box_w, gap, box_h, top = len(steps), 380, 80, 330, 400
+    x0 = (W - n * box_w - (n - 1) * gap) // 2
+    accent = (92, 170, 220)
+    badges = []
+    for i, step in enumerate(steps):
+        x = x0 + i * (box_w + gap)
+        layer = Image.new("RGBA", (box_w + gap, box_h), (0, 0, 0, 0))
+        d = ImageDraw.Draw(layer)
+        bx = gap if i else 0          # 2 つ目からは左の矢印ごと出す
+        if i:
+            ay = box_h // 2
+            d.line((10, ay, gap - 22, ay), fill=SUB, width=5)
+            d.polygon([(gap - 10, ay), (gap - 30, ay - 14), (gap - 30, ay + 14)], fill=SUB)
+        d.rounded_rectangle((bx, 0, bx + box_w - 1, box_h - 1), radius=22, fill=(30, 34, 42, 255),
+                            outline=accent, width=3)
+        cx = bx + box_w // 2
+        d.text((cx, 62), "①②③④⑤⑥"[i], font=font(6, 54), fill=accent, anchor="mm")
+        size = 40
+        while font(6, size).getlength(step["name"]) > box_w - 40 and size > 28:
+            size -= 2
+        d.text((cx, 130), step["name"], font=font(6, size), fill=FG, anchor="mm")
+        ty = 196
+        for note in step.get("notes", []):
+            d.text((cx, ty), note, font=font(3, 28), fill=SUB, anchor="mm")
+            ty += 40
+        png = TMP / f"overview_{i}.png"
+        layer.save(png)
+        badges.append((png, (x - bx, top), 0.4 + 0.6 * i))
+    if cfg.get("foot"):
+        dr.text((W // 2, top + box_h + 130), cfg["foot"], font=font(3, 34), fill=SUB, anchor="mm")
+    bg = TMP / "overview_bg.png"
+    img.save(bg)
+    compose(PARTS / "overview.mp4", bg, [], badges, cfg.get("seconds", 6.0))
+
+
 def part_photo(cfg: dict) -> None:
     """機材の写真を見出しの下に置く。HEIC は sips で JPEG にしてから読む。"""
     src = ASSETS / "photo" / cfg["src"]
@@ -377,6 +446,8 @@ def parts(args: argparse.Namespace) -> None:
                 "successes": lambda: part_successes(clips), "results": part_results}
     if "title" in clips:
         builders["title"] = lambda: part_title(clips["title"])
+    if "overview" in clips:
+        builders["overview"] = lambda: part_overview(clips["overview"])
     if "photo" in clips:
         if (ASSETS / "photo" / clips["photo"]["src"]).exists():
             builders["photo"] = lambda: part_photo(clips["photo"])

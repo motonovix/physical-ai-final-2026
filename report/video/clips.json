@@ -11,6 +11,41 @@
       "at": 9.0
     }
   },
+  "overview": {
+    "lead": "ゲームコントローラと MacBook で、フィジカル AI の一連の流れを試す",
+    "steps": [
+      {
+        "name": "テレオペ",
+        "notes": [
+          "MacBook ＋ コントローラ",
+          "Claude Code で自作"
+        ]
+      },
+      {
+        "name": "デモの記録",
+        "notes": [
+          "操作の軌跡を記録",
+          "LeRobot 形式に変換"
+        ]
+      },
+      {
+        "name": "VLA の追加学習",
+        "notes": [
+          "SmolVLA・π0.5",
+          "Colab の GPU"
+        ]
+      },
+      {
+        "name": "シミュレータで評価",
+        "notes": [
+          "LIBERO で解かせる",
+          "成功率と動画"
+        ]
+      }
+    ],
+    "foot": "前半は ① の操作、後半は ③ ④ の結果を見せる",
+    "seconds": 6.5
+  },
   "photo": {
     "src": "setup.jpg",
     "seconds": 3.0,
@@ -43,22 +78,63 @@
       "src": "a2.mov",
       "start": 0.0,
       "end": 8.0,
-      "title": "teleop：課題を選ぶ",
-      "sub": "Mac 上の操作画面。Pro コントローラでスイート・課題・初期配置を選ぶ"
+      "title": "① テレオペ：課題を選ぶ",
+      "captions": [
+        {
+          "from": 0.0,
+          "to": 4.0,
+          "text": "Claude Code で作ったテレオペ環境\n（シミュレータは LIBERO-Plus）"
+        },
+        {
+          "from": 4.0,
+          "text": "課題の選択から保存まで、コントローラだけで操作できる"
+        }
+      ]
     },
     "teleop_b": {
       "src": "b2.mov",
       "start": 0.0,
       "end": 18.0,
-      "title": "teleop：人がゲームパッドで課題を解く",
-      "sub": "ボウルをコンロに載せる（place the bowl on the stove）"
+      "title": "① テレオペ：1 本解く",
+      "sub": "ボウルをコンロに載せる（place the bowl on the stove）",
+      "captions": [
+        {
+          "from": 0.0,
+          "to": 4.5,
+          "text": "READY から 3・2・1 で操作を始める"
+        },
+        {
+          "from": 4.5,
+          "to": 8.5,
+          "text": "コントローラの入力を、VLA と同じ形の命令に変換\n（20 Hz、手先の動き 6 軸＋グリッパ）"
+        },
+        {
+          "from": 8.5,
+          "to": 12.5,
+          "text": "正面・真上・グリッパ横の 3 視点と、ゴールの位置を示すガイドを表示"
+        },
+        {
+          "from": 12.5,
+          "to": 15.0,
+          "text": "ゴールの条件が成り立つと、自動で SUCCESS と判定"
+        },
+        {
+          "from": 15.0,
+          "text": "操作の記録を保存し、あとで学習データにする"
+        }
+      ]
     },
     "teleop_c": {
       "src": "b1.mov",
       "start": 8.0,
       "end": 19.0,
-      "title": "うまくいかない例：ワインの瓶に当たった",
-      "sub": "ゴールに届いても、ほかの物を 1 mm 以上動かしたら成功と数えず、やり直す"
+      "title": "① テレオペ：うまくいかない例",
+      "captions": [
+        {
+          "from": 4.0,
+          "text": "ゴールに届いても、ほかの物を 1 mm 以上動かしたら失敗と判定\n（この例は、ワインの瓶が 60 mm 動いた）"
+        }
+      ]
     }
   }
 }
