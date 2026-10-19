@@ -33,6 +33,8 @@ SUB = (150, 156, 166)
 OK = (40, 150, 85)
 NG = (190, 55, 55)
 FONT_DIR = Path("/System/Library/Fonts")
+CHROME = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+ROOT = HERE.parents[1]
 
 VCODEC = ["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-profile:v", "high",
           "-pix_fmt", "yuv420p", "-r", str(FPS)]
@@ -378,8 +380,8 @@ def part_title(cfg: dict) -> None:
     compose(PARTS / "title.mp4", bg, [], [], cfg.get("seconds", 2.0), fade_in=0.3)
 
 
-def part_overview(cfg: dict) -> None:
-    """全体の流れの図。見出しの後、四角を左から順に出す。"""
+def part_overview(cfg: dict, name: str = "overview") -> None:
+    """流れの図。見出しの後、四角を左から順に出す。四角の上の印は mark（既定は ①②…）。"""
     img, dr = canvas()
     dr.text((W // 2, 215), cfg["lead"], font=font(6, 50), fill=FG, anchor="mm")
     steps = cfg["steps"]
@@ -399,7 +401,8 @@ def part_overview(cfg: dict) -> None:
         d.rounded_rectangle((bx, 0, bx + box_w - 1, box_h - 1), radius=22, fill=(30, 34, 42, 255),
                             outline=accent, width=3)
         cx = bx + box_w // 2
-        d.text((cx, 62), "①②③④⑤⑥"[i], font=font(6, 54), fill=accent, anchor="mm")
+        mark = step.get("mark") or "①②③④⑤⑥"[i]
+        d.text((cx, 62), mark, font=font(6, 54 if len(mark) == 1 else 34), fill=accent, anchor="mm")
         size = 40
         while font(6, size).getlength(step["name"]) > box_w - 40 and size > 28:
             size -= 2
@@ -408,14 +411,85 @@ def part_overview(cfg: dict) -> None:
         for note in step.get("notes", []):
             d.text((cx, ty), note, font=font(3, 28), fill=SUB, anchor="mm")
             ty += 40
-        png = TMP / f"overview_{i}.png"
+        png = TMP / f"{name}_{i}.png"
         layer.save(png)
         badges.append((png, (x - bx, top), 0.4 + 0.6 * i))
     if cfg.get("foot"):
         dr.text((W // 2, top + box_h + 130), cfg["foot"], font=font(3, 34), fill=SUB, anchor="mm")
-    bg = TMP / "overview_bg.png"
+    bg = TMP / f"{name}_bg.png"
     img.save(bg)
-    compose(PARTS / "overview.mp4", bg, [], badges, cfg.get("seconds", 6.0))
+    compose(PARTS / f"{name}.mp4", bg, [], badges, cfg.get("seconds", 6.0))
+
+
+NOTEBOOK_CSS = """
+body { margin: 0; background: #1f1f1f; color: #e3e3e3; font-family: "Hiragino Sans", sans-serif; }
+.bar { height: 52px; display: flex; align-items: center; padding: 0 22px; background: #2b2b2b;
+       border-bottom: 1px solid #3c3c3c; font-size: 21px; }
+.bar .dot { width: 26px; height: 26px; border-radius: 6px; background: #f9ab00; margin-right: 14px; }
+.cells { padding: 18px 26px; }
+.md { font-size: 24px; font-weight: 600; margin: 10px 4px 8px; }
+.cell { display: flex; margin: 0 0 14px; }
+.run { width: 44px; flex: none; color: #9aa0a6; font: 20px Menlo, monospace; padding-top: 14px; }
+.code { flex: 1; background: #2a2a2a; border: 1px solid #3c3c3c; border-radius: 6px; padding: 12px 18px; }
+.code pre { margin: 0; font: 18px/1.45 Menlo, "Hiragino Sans", monospace; white-space: pre; }
+.more { color: #8a8f98; }
+"""
+
+
+def notebook_lines(nb: dict, spec: dict) -> str:
+    """セル spec["cell"] の、from を含む行から to を含む行までを取り出す（抜粋なら末尾に … を足す）。"""
+    lines = "".join(nb["cells"][spec["cell"]]["source"]).splitlines()
+    start = next(i for i, line in enumerate(lines) if spec["from"] in line)
+    end = next(i for i, line in enumerate(lines) if i >= start and spec["to"] in line)
+    picked = lines[start:end + 1]
+    if spec.get("more"):
+        indent = len(picked[-1]) - len(picked[-1].lstrip())
+        picked.append(" " * indent + "...")
+    return "\n".join(picked)
+
+
+def part_code(cfg: dict) -> None:
+    """notebook のセルを抜粋し、Colab 風の画面にして見出しの下に置く（Chrome で描く）。"""
+    from pygments import highlight
+    from pygments.formatters import HtmlFormatter
+    from pygments.lexers import PythonLexer
+
+    nb = json.loads((ROOT / cfg["notebook"]).read_text())
+    fmt = HtmlFormatter(style="github-dark", nowrap=True)
+    body = []
+    for spec in cfg["cells"]:
+        cell = nb["cells"][spec["cell"]]
+        if cell["cell_type"] == "markdown":
+            heading = "".join(cell["source"]).splitlines()[0].lstrip("# ")
+            body.append(f'<div class="md">{heading}</div>')
+        else:
+            code = highlight(notebook_lines(nb, spec), PythonLexer(), fmt)
+            body.append(f'<div class="cell"><div class="run">[ ]</div><div class="code"><pre>{code}</pre></div></div>')
+    top, bottom, side = 150, 955, 60       # 枠の下（955〜1080）にテロップを出す
+    pw, ph = W - 2 * side, bottom - top
+    html = (f"<!doctype html><meta charset='utf-8'><style>{NOTEBOOK_CSS}{fmt.get_style_defs('.code')}"
+            f".code {{ background: #2a2a2a; }}</style>"
+            f"<div class='bar'><div class='dot'></div>{cfg['doc_title']}</div><div class='cells'>{''.join(body)}</div>")
+    page = TMP / "code.html"
+    page.write_text(html)
+    shot = TMP / "code_shot.png"
+    subprocess.run([str(CHROME), "--headless=new", "--disable-gpu", "--hide-scrollbars", f"--user-data-dir={TMP / 'chrome'}",
+                    "--force-device-scale-factor=2", f"--window-size={pw},{ph}", f"--screenshot={shot}", page.as_uri()],
+                   check=True, capture_output=True)
+    panel = Image.open(shot).convert("RGB").resize((pw, ph), Image.LANCZOS)
+    img, dr = canvas()
+    dr.text((80, 40), cfg["title"], font=font(6, 46), fill=FG)
+    if cfg.get("note"):
+        dr.text((W - 80, 48), cfg["note"], font=font(3, 28), fill=SUB, anchor="ra")
+    img.paste(panel, (side, top))
+    bg = TMP / "code_bg.png"
+    img.save(bg)
+    total = cfg.get("seconds", 6.5)
+    badges = []
+    for i, cap in enumerate(cfg.get("captions", [])):
+        png, bw, bh = caption(TMP / f"code_cap{i}.png", cap["text"], 1500)
+        badges.append((png, ((W - bw) // 2, bottom + (H - bottom - bh) // 2), (cap["from"], cap.get("to", total))))
+    compose(PARTS / "code.mp4", bg, [], badges, total)
 
 
 def part_photo(cfg: dict) -> None:
@@ -446,8 +520,11 @@ def parts(args: argparse.Namespace) -> None:
                 "successes": lambda: part_successes(clips), "results": part_results}
     if "title" in clips:
         builders["title"] = lambda: part_title(clips["title"])
-    if "overview" in clips:
-        builders["overview"] = lambda: part_overview(clips["overview"])
+    for name in ("overview", "training"):
+        if name in clips:
+            builders[name] = lambda name=name: part_overview(clips[name], name)
+    if "code" in clips:
+        builders["code"] = lambda: part_code(clips["code"])
     if "photo" in clips:
         if (ASSETS / "photo" / clips["photo"]["src"]).exists():
             builders["photo"] = lambda: part_photo(clips["photo"])

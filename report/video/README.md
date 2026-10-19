@@ -13,12 +13,13 @@
 | # | 区間 | 長さの目安 | 中身 | 素材 | パーツ（`build/parts/`） |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 0 | タイトル | 2 秒 | 「ゲームコントローラと MacBook で始める フィジカル AI」＋副題 | 文字の画面（clips.json の `title`） | `title.mp4`（2 秒） |
-| 1 | 全体の流れ | 6〜8 秒 | ① テレオペ → ② デモの記録 → ③ VLA の追加学習 → ④ シミュレータで評価 の図（左から順に出る） | 図（clips.json の `overview`） | `overview.mp4`（6.5 秒） |
-| 1′ | 使う機材 | 3 秒 | Switch Pro コントローラと MacBook の写真 | [写真 E](#撮る素材)（clips.json の `photo`） | `photo.mp4`（未） |
+| 1 | 全体の流れ | 6 秒 | ① テレオペ → ② デモの記録 → ③ VLA の追加学習 → ④ シミュレータで評価 の図（左から順に出る） | 図（clips.json の `overview`） | `overview.mp4`（6 秒） |
+| 1′ | 使う機材 | 3 秒 | Switch Pro コントローラと、teleop を映した MacBook の写真 | [写真 E](#撮る素材)（clips.json の `photo`） | `photo.mp4`（3 秒） |
 | 2 | teleop：課題を選ぶ | 10〜15 秒 | 課題を選ぶメニュー。テロップで Claude Code で自作したテレオペ環境だと説明 | [素材 A](#撮る素材)（a2 の 0〜8 秒） | `teleop_a.mp4`（8.5 秒） |
 | 3〜4 | teleop：1 本解く | 25〜35 秒 | 1147「ボウルをコンロに載せる」を READY → 操作 → SUCCESS → 保存まで。場面ごとにテロップで機能を説明 | [素材 B](#撮る素材)（b2 の 0〜18 秒） | `teleop_b.mp4`（18.5 秒） |
 | 4′ | うまくいかない例 | 5〜12 秒 | ワインの瓶に当たり、SUCCESS が出ても「Collided」でやり直す | [素材 C](#撮る素材)（b1 の 8〜19 秒） | `teleop_c.mp4`（11.5 秒） |
-| 5 | 学習へのつなぎ | 8〜10 秒 | 記録 → 2 カメラの画像を描き直して LeRobot 形式 → Colab で追加学習 | 文字の画面（作る） | `training.mp4`（未） |
+| 5 | Colab で学習 | 5.5 秒 | データセット → Colab の GPU → 追加学習 → 学習済みモデル の図 | 図（clips.json の `training`） | `training.mp4`（5.5 秒） |
+| 5′ | Colab の notebook | 6.5 秒 | π0.5 の notebook の学習設定と学習コマンドを抜粋し、Colab 風の画面にして見せる | notebook（clips.json の `code`） | `code.mp4`（6.5 秒） |
 | 6 | SmolVLA | 10〜12 秒 | SmolVLA を人の teleop 18 本で LoRA 追加学習し、赤いマグの課題を解く（正面＋手首カメラ、等倍速） | parc2026（2026-09-08） | `smolvla.mp4`（今 7.7 秒） |
 | 7 | π0.5 の前後比較 | 12〜15 秒 | 追加学習の前と後を、同じ問題・同じ初期配置で横に並べる（2 倍速） | parc2026（2026-09-20） | `compare.mp4`（今 9.5 秒） |
 | 8 | 解けた例 | 12〜15 秒 | 追加学習の後に解けた 4 問（等倍速） | 同上 | `successes.mp4`（今 11.6 秒） |
@@ -136,6 +137,9 @@ YouTube の推奨に合わせ、すべてのパーツを同じ形式にそろえ
 元動画は 256px（SmolVLA は 512x256）なので、拡大すると少し粗い。
 
 ### 文字の入れ方
+
+コードの画面（`code.mp4`）だけは、notebook のセルを pygments で色付けした HTML にし、Chrome（headless）で画像にしている。
+抜き出すセルと行は clips.json の `code.cells`（セルの番号と、`from`・`to` に含まれる文字列）で決める。
 
 この Mac の ffmpeg には文字を描く機能（drawtext・subtitles）が入っていない。
 見出しや「成功」の札は Pillow（ヒラギノ角ゴシック）で画像にして重ねている（[scripts/build_parts.py](scripts/build_parts.py)）。

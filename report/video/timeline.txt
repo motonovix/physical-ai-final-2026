@@ -2,15 +2,16 @@
 # 構成と長さの目安は README.md の「構成（案）」。（未）のパーツはできたら # を外す。
 #
 title.mp4                  # 0 タイトル（2 秒）
-overview.mp4               # 1 全体の流れ（図、6.5 秒）
-# photo.mp4                # 1′ 機材の写真（assets/photo/setup.jpg を置いて make parts PART=photo）
+overview.mp4               # 1 全体の流れ（図、6 秒）
+photo.mp4                  # 1′ 機材の写真（assets/photo/setup.jpg、3 秒）
 #
 # 前半：Mac で teleop を動かしている様子の画面録画（assets/teleop/ に置き、clips.json の screens に書いて make parts）
 teleop_a.mp4               # 2 課題を選ぶ
 teleop_b.mp4               # 3〜4 1 本解く・成功の判定と記録
 teleop_c.mp4               # うまくいかない例（ほかの物に当たった）
 #
-# training.mp4             # 5 学習へのつなぎ（未）
+training.mp4               # 5 Colab で学習（図、5.5 秒）
+code.mp4                   # 5′ Colab の notebook（コードの画面、6.5 秒）
 #
 # 後半：parc2026 の動画（make parts）
 smolvla.mp4                # 6 SmolVLA

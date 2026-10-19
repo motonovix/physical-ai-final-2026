@@ -44,13 +44,84 @@
       }
     ],
     "foot": "前半は ① の操作、後半は ③ ④ の結果を見せる",
-    "seconds": 6.5
+    "seconds": 6.0
   },
   "photo": {
     "src": "setup.jpg",
     "seconds": 3.0,
     "title": "使う機材",
-    "sub": "Nintendo Switch Pro コントローラ（Bluetooth でつなぐ）と MacBook"
+    "sub": "Nintendo Switch Pro コントローラ（Bluetooth でつなぐ）と、teleop を動かしている MacBook"
+  },
+  "training": {
+    "lead": "③ VLA の追加学習は、Google Colab の GPU で行った",
+    "steps": [
+      {
+        "mark": "DATA",
+        "name": "デモのデータセット",
+        "notes": [
+          "LeRobot 形式",
+          "Hugging Face に置く"
+        ]
+      },
+      {
+        "mark": "GPU",
+        "name": "Colab の GPU",
+        "notes": [
+          "A100・L4",
+          "notebook で実行"
+        ]
+      },
+      {
+        "mark": "TRAIN",
+        "name": "追加学習",
+        "notes": [
+          "SmolVLA：LoRA",
+          "π0.5：全パラメータ"
+        ]
+      },
+      {
+        "mark": "MODEL",
+        "name": "学習済みモデル",
+        "notes": [
+          "Hugging Face に保存",
+          "④ の評価で使う"
+        ]
+      }
+    ],
+    "foot": "π0.5 は A100 で 600 step・約 22 分、SmolVLA は L4 で 1,000 step",
+    "seconds": 5.5
+  },
+  "code": {
+    "notebook": "notebooks/vladrop_drop9_finetune.ipynb",
+    "doc_title": "π0.5 × LIBERO-Plus 追加学習（Colab）",
+    "cells": [
+      {
+        "cell": 1
+      },
+      {
+        "cell": 2,
+        "from": "# ---------------------------------------------------------------- 学習",
+        "to": "GRADIENT_CHECKPOINTING"
+      },
+      {
+        "cell": 11
+      },
+      {
+        "cell": 12,
+        "from": "def train(",
+        "to": "\"--num-train-steps\"",
+        "more": true
+      }
+    ],
+    "title": "③ VLA の追加学習：Colab の notebook",
+    "note": "このリポジトリの notebooks/ に収録（抜粋）",
+    "captions": [
+      {
+        "from": 0.5,
+        "text": "Colab の GPU（A100）で π0.5 を 600 step 追加学習（約 22 分）"
+      }
+    ],
+    "seconds": 6.5
   },
   "compare": {
     "task": 12,
