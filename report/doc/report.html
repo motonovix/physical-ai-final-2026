@@ -27,8 +27,8 @@
 
 <h2>1. 概要</h2>
 <p>
-  MacBook と Nintendo Switch Pro コントローラだけで動く LIBERO-Plus [2]（LIBERO [1] の摂動版。物理エンジンは MuJoCo [3]、環境は robosuite [4]）のテレオペ環境を
-  Claude Code で実装し、収集したデモで SmolVLA [6] と π0.5 [7] を追加学習して、シミュレータで評価した。
+  MacBook と Nintendo Switch Pro コントローラだけで動くテレオペ環境を、LIBERO [1] の摂動版である LIBERO-Plus [2]（物理エンジンは MuJoCo [3]、環境は robosuite [4]）上に
+  Claude Code で実装し、収集したデモで SmolVLA [5] と π0.5 [6] を追加学習して、シミュレータで評価した。
 </p>
 <div class="flow">
   <div class="step"><b>① テレオペ</b><span>Pro コントローラ＋MacBook<br>Claude Code で実装</span></div>
@@ -41,7 +41,7 @@
 </div>
 <p>
   action は OSC_POSE の Δ位置・Δ姿勢（6 自由度）とグリッパの 7 次元・20 Hz とし、VLA の action 空間とそろえた。
-  エピソードは MuJoCo の state 列と action 列で保存し、観測画像（agentview と eye-in-hand、256 px）は state から再描画して LeRobot [5] v3.0 形式に変換する。
+  エピソードは MuJoCo の state 列と action 列で保存し、観測画像（agentview と eye-in-hand、256 px）は state から再描画して LeRobot [7] v3.0 形式に変換する。
   成功判定は BDDL のゴール述語の成立に加え、対象外の物体の変位（L1）が 1 mm 以下であることを条件とした。
 </p>
 
@@ -115,13 +115,13 @@
 <table class="results">
   <tr><th>モデル</th><th>デモと学習</th><th>評価</th></tr>
   <tr>
-    <td>SmolVLA [6]</td>
+    <td>SmolVLA [5]</td>
     <td>人のテレオペのデモ 18 エピソード（赤いマグを皿から戻すタスク、1,942 frame）。LoRA（r16）、1,000 step、batch 8、Colab の L4。</td>
     <td>学習時と同じ初期状態で 1 rollout し、成功。別条件の 2 rollout は時間切れで、汎化は未検証。</td>
   </tr>
   <tr>
-    <td>π0.5 [7]</td>
-    <td>π0.5 の軽量版（言語モデル 18 層のうち 9 層を除去）を起点に、LIBERO のタスクを逆向きにしたタスクのデモ 415 エピソードで全パラメータを 600 step（batch 16、Colab の A100、約 22 分）。</td>
+    <td>π0.5 [6]</td>
+    <td>VLADrop [8] の π0.5 の軽量版（Drop9：言語モデル 18 層のうち 9 層を除去）を起点に、LIBERO のタスクを逆向きにしたタスクのデモ 415 エピソードで全パラメータを 600 step（batch 16、Colab の A100、約 22 分）。</td>
     <td>逆向きのタスク 16 件（8 種 × 指示文 2 通り）、各 1 rollout。<strong>学習前 0/16 → 学習後 13/16</strong>（対象外の物体の変位が 1 mm 以下での成功は 8/16）。</td>
   </tr>
 </table>
@@ -140,9 +140,10 @@
   <tr><td>LIBERO-Plus</td><td>シミュレータのタスク</td><td>github.com/sylvestf/LIBERO-plus（commit 4976dc3）</td><td>記載なし</td><td>[2]</td></tr>
   <tr><td>MuJoCo</td><td>物理エンジン</td><td>3.7.0</td><td>Apache-2.0</td><td>[3]</td></tr>
   <tr><td>robosuite</td><td>ロボット環境</td><td>1.4.0</td><td>MIT</td><td>[4]</td></tr>
-  <tr><td>LeRobot</td><td>データ形式・学習</td><td>0.6.0</td><td>Apache-2.0</td><td>[5]</td></tr>
-  <tr><td>SmolVLA</td><td>VLA</td><td>lerobot/smolvla_libero_plus（Hugging Face）</td><td>Apache-2.0</td><td>[6]</td></tr>
-  <tr><td>π0.5 / openpi</td><td>VLA</td><td>github.com/Physical-Intelligence/openpi</td><td>Apache-2.0。π0.5 は PaliGemma [8] が基で、その重みには Gemma Terms of Use が適用される</td><td>[7]</td></tr>
+  <tr><td>LeRobot</td><td>データ形式・学習</td><td>0.6.0</td><td>Apache-2.0</td><td>[7]</td></tr>
+  <tr><td>SmolVLA</td><td>VLA</td><td>lerobot/smolvla_libero_plus（Hugging Face）</td><td>Apache-2.0</td><td>[5]</td></tr>
+  <tr><td>π0.5 / openpi</td><td>VLA</td><td>github.com/Physical-Intelligence/openpi</td><td>Apache-2.0。π0.5 は PaliGemma [9] が基で、その重みには Gemma Terms of Use が適用される</td><td>[6]</td></tr>
+  <tr><td>VLADrop（Drop9）</td><td>π0.5 の軽量版の重みと学習コード（追加学習の起点）</td><td>s1ghhh/VLADrop_pi05_LIBERO-Plus_Drop9Block_GateProbe（Hugging Face）、github.com/s1ghhh/VLADrop</td><td>コードは MIT、重みは Apache-2.0</td><td>[8]</td></tr>
   <tr><td>pygame / OpenCV</td><td>teleop の入力・表示</td><td>2.6.1 / 4.11.0</td><td>LGPL-2.1 / Apache-2.0</td><td>—</td></tr>
   <tr><td>Claude Code</td><td>teleop 環境・動画の作成</td><td>Anthropic</td><td>Anthropic の利用規約</td><td>—</td></tr>
   <tr><td>AivisSpeech</td><td>動画のナレーション（声：まお）</td><td>Aivis Project</td><td>LGPL-3.0（声のモデルは Aivis Common Model License 1.0）</td><td>—</td></tr>
@@ -156,9 +157,10 @@
   <li>S. Fei, S. Wang, J. Shi, Z. Dai, J. Cai, P. Qian, L. Ji, X. He, S. Zhang, Z. Fei, J. Fu, J. Gong, and X. Qiu, “LIBERO-Plus: In-depth Robustness Analysis of Vision-Language-Action Models,” arXiv:2510.13626, 2025.</li>
   <li>E. Todorov, T. Erez, and Y. Tassa, “MuJoCo: A physics engine for model-based control,” in <i>Proc. IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)</i>, 2012, pp. 5026–5033.</li>
   <li>Y. Zhu, J. Wong, A. Mandlekar, R. Martín-Martín, A. Joshi, K. Lin, A. Maddukuri, S. Nasiriany, and Y. Zhu, “robosuite: A Modular Simulation Framework and Benchmark for Robot Learning,” arXiv:2009.12293, 2020.</li>
-  <li>R. Cadene, S. Alibert, A. Soare, Q. Gallouedec, A. Zouitine, S. Palma, P. Kooijmans, M. Aractingi, M. Shukor, D. Aubakirova, M. Russi, F. Capuano, C. Pascal, J. Choghari, K. Meftah, M. Ellerbach, J. Moss, and T. Wolf, “LeRobot: State-of-the-art Machine Learning for Real-World Robotics in Pytorch,” 2024. [Online]. Available: https://github.com/huggingface/lerobot</li>
   <li>M. Shukor, D. Aubakirova, F. Capuano, P. Kooijmans, S. Palma, A. Zouitine, M. Aractingi, C. Pascal, M. Russi, A. Marafioti, S. Alibert, M. Cord, T. Wolf, and R. Cadene, “SmolVLA: A Vision-Language-Action Model for Affordable and Efficient Robotics,” arXiv:2506.01844, 2025.</li>
   <li>Physical Intelligence, K. Black, N. Brown, J. Darpinian, K. Dhabalia, D. Driess, A. Esmail, <i>et al.</i>, “π0.5: a Vision-Language-Action Model with Open-World Generalization,” arXiv:2504.16054, 2025.</li>
+  <li>R. Cadene, S. Alibert, A. Soare, Q. Gallouedec, A. Zouitine, S. Palma, P. Kooijmans, M. Aractingi, M. Shukor, D. Aubakirova, M. Russi, F. Capuano, C. Pascal, J. Choghari, K. Meftah, M. Ellerbach, J. Moss, and T. Wolf, “LeRobot: State-of-the-art Machine Learning for Real-World Robotics in Pytorch,” 2024. [Online]. Available: https://github.com/huggingface/lerobot</li>
+  <li>G. Sun, K. Feng, S. He, X. Gong, Y. He, Z. Wang, Z. Shen, W. Ye, R. R. Kompella, G. Liu, and A. Li, “Drop-Then-Recovery: How Redundant Are Vision-Language-Action Models?,” arXiv:2606.27755, 2026.</li>
   <li>L. Beyer, A. Steiner, A. S. Pinto, <i>et al.</i>, “PaliGemma: A versatile 3B VLM for transfer,” arXiv:2407.07726, 2024.</li>
 </ol>
 <p class="credits">Nintendo Switch は任天堂の商標、MacBook は Apple Inc. の商標です。その他の会社名・製品名は各社の商標または登録商標です。</p>
