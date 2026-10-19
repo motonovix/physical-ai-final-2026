@@ -41,11 +41,11 @@
 </div>
 <p>
   action は OSC_POSE の Δ位置・Δ姿勢（6 自由度）とグリッパの 7 次元・20 Hz とし、VLA の action 空間とそろえた。
-  エピソードは MuJoCo の state 列と action 列で保存し、観測画像（agentview と eye-in-hand、256 px）は state から再描画して LeRobot [7] v3.0 形式に変換する。
+  エピソードは MuJoCo の state 列と action 列で保存し、観測画像（agentview と eye-in-hand）は state から再描画して LeRobot [7] v3.0 形式に変換する。学習と評価の設定は 4 節にまとめた。
   成功判定は BDDL のゴール述語の成立に加え、対象外の物体の変位（L1）が 1 mm 以下であることを条件とした。
 </p>
 
-<h2>2. ゲームコントローラならではの利点</h2>
+<h2>2. ゲームコントローラでのテレオペの工夫</h2>
 <p>数字は、動画で示したエピソード（libero_goal のタスク 1147「place the bowl on the stove」、116 step）の記録から算出した。</p>
 
 <div class="point">
@@ -111,29 +111,126 @@
   </figure>
 </div>
 
+<div class="point">
+  <h3><span class="num">④</span> 鉛直線（ドロップライン）で奥行き方向の位置を把握できる</h3>
+  <div class="side wide">
+    <figure>
+      <img src="figures/guides.png" alt="正面カメラに重ねた鉛直線">
+      <figcaption>図 5　正面カメラの表示補助（図 2 と同じエピソード）。(a) step 9、(b) step 17。マゼンタ：把持中心の鉛直線（○ 机、◇ 途中の物体の上面）。橙：対象物の中心から EEF の高さまでの鉛直線。シアン：そこから把持中心への水平線と、両指を結ぶ把持線。緑：ゴール領域。</figcaption>
+    </figure>
+    <div class="text">
+      <p>
+        単眼のカメラ画像では、EEF と物体の奥行き方向の位置関係が読み取りにくい。
+        teleop は各カメラ画像に、把持中心（grip site）から鉛直下向きの線を描き、支持面との交点に ○ を打つ。
+        途中に物体があれば、レイキャストで求めた上面との交点に ◇ を打ち、その下を薄くする（図 5 (b)）。
+        3D のゲームでキャラクタの真下に落とす影と同じ役割で、○ の位置が EEF の水平位置を机の上に写す。
+      </p>
+      <p>
+        対象物には、中心から EEF の高さまでの鉛直線と、そこから把持中心への水平線を描き、高さの差と水平方向のずれを分けて示す。
+        把持線は両指を結ぶ向きと開き幅を示し、yaw の合わせ込みにも使える。
+      </p>
+      <p>
+        いずれも描画時に画像へ重ねるだけで、MuJoCo の state と記録には入らない。
+        学習用の観測画像は記録した state から再描画するため、表示補助はデモの画像に写り込まない。
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="keep">
 <h2>3. 学習と評価の結果</h2>
 <table class="results">
-  <tr><th>モデル</th><th>デモと学習</th><th>評価</th></tr>
+  <caption>表 1　学習と評価の結果</caption>
+  <thead><tr><th>モデル</th><th>デモと学習</th><th>評価</th></tr></thead>
   <tr>
     <td>SmolVLA [5]</td>
     <td>人のテレオペのデモ 18 エピソード（赤いマグを皿から戻すタスク、1,942 frame）。LoRA（r16）、1,000 step、batch 8、Colab の L4。</td>
-    <td>学習時と同じ初期状態で 1 rollout し、成功。別条件の 2 rollout は時間切れで、汎化は未検証。</td>
+    <td>学習時と同じ初期状態・seed で 3 rollout。MuJoCo 2.3.7 では成功、MuJoCo 3.7.0 の 2 回は失敗（時間切れ 1、接触 1）。シミュレータの版で結果が変わり、汎化は未検証。</td>
   </tr>
   <tr>
     <td>π0.5 [6]</td>
-    <td>VLADrop [8] の π0.5 の軽量版（Drop9：言語モデル 18 層のうち 9 層を除去）を起点に、LIBERO のタスクを逆向きにしたタスクのデモ 415 エピソードで全パラメータを 600 step（batch 16、Colab の A100、約 22 分）。</td>
+    <td>VLADrop [8] の π0.5 の軽量版（Drop9：言語モデル 18 層のうち 9 層を除去）を起点に、LIBERO のタスクを逆向きにした 8 タスクの人のテレオペ 91 本から作った 415 エピソードで、全パラメータを 600 step（batch 16、Colab の A100、約 22 分）。</td>
     <td>逆向きのタスク 16 件（8 種 × 指示文 2 通り）、各 1 rollout。<strong>学習前 0/16 → 学習後 13/16</strong>（対象外の物体の変位が 1 mm 以下での成功は 8/16）。</td>
   </tr>
 </table>
-<p>学習と評価のコードは、リポジトリの <code>notebooks/</code> に Colab の notebook として収録した。</p>
+</div>
 
-<h2 class="new-page">4. 使用したソフトウェア・モデル</h2>
+<h2>4. 再現のための設定</h2>
+<p>
+  値は、学習時の実行記録（実行時の引数と設定ファイル）、学習済みの checkpoint の config、学習コードの既定値から取った。
+  教師データと学習済みの重みは非公開。学習の手順は <code>notebooks/</code> に Colab の notebook として収録した。
+  VLADrop 版はデータ以外を表 3 と同じ値にしてある。SmolVLA 版の既定値（2,000 step、lr 3×10<sup>−4</sup>、LeRobot 既定の LoRA の対象、256 px）は表 3 と異なるので、再現するときは表 3 の値に置き換える。
+</p>
+
+<h3>4.1 teleop とデモの記録</h3>
+<table class="hp">
+  <caption>表 2　teleop とデモの記録の設定</caption>
+  <thead><tr><th>項目</th><th>設定</th></tr></thead>
+  <tr><td>環境</td><td>LIBERO-Plus [2]（commit 4976dc3）、MuJoCo 3.7.0、robosuite 1.4.0。コントローラ OSC_POSE、control_freq 20 Hz</td></tr>
+  <tr><td>action</td><td>7 次元。<i>a</i><sub>i</sub> = clip(0.35 · <i>g</i><sub>i</sub> · 1.4 · SPEED · <i>u</i><sub>i</sub>, −1, 1)（i = 1…6）、<i>a</i><sub>7</sub> = ±1（Y で閉 +1、B で開 −1）。<i>u</i> はスティックの倒し量（遊び <i>d</i> 以下を 0 とし、残りを [−1, 1] に引き直す）またはボタンの ±1</td></tr>
+  <tr><td>軸ごとの <i>g</i>・<i>d</i></td><td>x・y：左スティック、<i>g</i> 1.5、<i>d</i> 0.20 ／ z：右スティック縦、<i>g</i> 2.0、<i>d</i> 0.10 ／ yaw：右スティック横、<i>g</i> 1.0、<i>d</i> 0.25 ／ roll：L・R、pitch：ZL・ZR（十字キーでも可）、<i>g</i> 1.0（ZR の pitch のみ 0.7）</td></tr>
+  <tr><td>倍率</td><td>SPEED（action の倍率、開始時 1.3）と TIME（壁時計に対する step の進み）。図 2〜5 のエピソードは SPEED 1.3、TIME 0.7</td></tr>
+  <tr><td>記録と変換</td><td>各 action の直前の MuJoCo state と action を保存。観測は state から再描画（agentview・eye-in-hand、180° 回転）。state は 8 次元（EEF 位置 3、軸角 3、指 2）。LeRobot v3.0、20 fps</td></tr>
+</table>
+
+<h3>4.2 学習</h3>
+<table class="hp cmp">
+  <caption>表 3　学習の設定</caption>
+  <thead><tr><th>項目</th><th>SmolVLA [5]</th><th>π0.5 [6]（VLADrop Drop9 [8]）</th></tr></thead>
+  <tr><td>初期重み</td><td>lerobot/smolvla_libero_plus @ 7bb70aa（VLM：SmolVLM2-500M-Video-Instruct）</td><td>s1ghhh/VLADrop_pi05_LIBERO-Plus_Drop9Block_GateProbe @ 5760f99</td></tr>
+  <tr><td>学習コード</td><td>LeRobot v0.6.0 の lerobot-train</td><td>VLADrop @ 782d3e5 の scripts/train_pytorch.py（設定 pi05_libero_plus、PyTorch 2.7.1）</td></tr>
+  <tr><td>教師データ</td><td>人のテレオペ 18 エピソード、1 タスク、1,942 frame（各 92〜177 step）。ゴール到達・変位 ≤ 1 mm・グリッパ開で開始、の記録だけを採用</td><td>8 タスクの人のテレオペ 91 本（すべてゴール到達・接触なし）。全体 91 本と、対象が 1 cm 持ち上がった時点で分けた前半・後半（各 81 本 × 指示文 2 通り）の計 415 エピソード、30,599 frame、指示文 36 通り</td></tr>
+  <tr><td>画像</td><td>128 px → pad 付きで 512 px に拡大。拡張なし</td><td>128 px → pad 付きで 224 px に拡大。拡張：crop 95%・回転 ±5°（手首カメラ以外）、明るさ 0.7〜1.3・コントラスト 0.6〜1.4・彩度 0.5〜1.5</td></tr>
+  <tr><td>学習する重み</td><td>LoRA（r 16、α 16）。対象は action expert と VLM の言語層の q_proj・v_proj、state・action の射影層。元の重みは凍結し、学習後にマージ</td><td>全パラメータ（vision encoder を含む）。除去した LLM 層 7、10〜17 は forward で飛ばす</td></tr>
+  <tr><td>step × batch</td><td>1,000 × 8（8,000 サンプル）</td><td>600 × 16（9,600 サンプル、約 0.31 epoch）</td></tr>
+  <tr><td>最適化</td><td>AdamW（β 0.9 / 0.95、ε 10<sup>−8</sup>、weight decay 10<sup>−10</sup>）、勾配クリップ 10</td><td>AdamW（同左）、勾配クリップ 1.0</td></tr>
+  <tr><td>学習率</td><td>線形 warmup 100 step で 1×10<sup>−4</sup>、cosine で 1,000 step 目に 1×10<sup>−5</sup></td><td>線形 warmup 100 step で 5×10<sup>−5</sup>、cosine で 600 step 目に 5×10<sup>−6</sup></td></tr>
+  <tr><td>精度・EMA</td><td>bf16 混合精度。EMA なし</td><td>bf16（埋め込みと layernorm は fp32）、gradient checkpointing。EMA は 0.999 を指定したが PyTorch 版では適用されない</td></tr>
+  <tr><td>action chunk</td><td>50（action・state は 32 次元に pad）</td><td>10（action は 32 次元に pad）</td></tr>
+  <tr><td>正規化</td><td>state・action を平均・標準偏差で（統計量は lerobot/libero_plus のもの）</td><td>state・action を分位点 q01・q99 で（統計量は初期重みに同梱のもの）</td></tr>
+  <tr><td>言語の token 長</td><td>最大 48</td><td>最大 200</td></tr>
+  <tr><td>seed</td><td>42</td><td>42</td></tr>
+  <tr><td>計算資源</td><td>Colab L4、676 秒</td><td>Colab A100 40 GB、1,306 秒（定常 1.6 秒/step）、VRAM 最大 28,854 MiB</td></tr>
+  <tr><td>最終 loss</td><td>0.345</td><td>0.023</td></tr>
+</table>
+
+<div class="keep">
+<h3>4.3 評価</h3>
+<table class="hp cmp">
+  <caption>表 4　評価の設定</caption>
+  <thead><tr><th>項目</th><th>SmolVLA</th><th>π0.5</th></tr></thead>
+  <tr><td>タスク</td><td>libero_90 の LIVING_ROOM_SCENE5「put the red mug on the left plate」の逆。指示文 “take the red mug off the left plate and put it back on the table behind the other two mugs”</td><td>LIBERO の 8 タスクの逆（表 5）× 指示文 2 通り（学習時と同じ文、学習にない言い換え）＝ 16 件</td></tr>
+  <tr><td>シミュレータ</td><td>MuJoCo 2.3.7・robosuite 1.4.0（Mac）、MuJoCo 3.7.0・robosuite 1.4.1（Mac と GPU サーバ）</td><td>LIBERO-Plus（commit 4976dc3）、MuJoCo 3.2.3、robosuite 1.4.1</td></tr>
+  <tr><td>初期状態・seed</td><td>INIT 0、seed 42</td><td>INIT 0、env と numpy の seed 42。推論のノイズは seed なし</td></tr>
+  <tr><td>カメラ</td><td>agentview・eye-in-hand</td><td>agentview・eye-in-hand、256 px、180° 回転</td></tr>
+  <tr><td>step</td><td>最大 400（MuJoCo 2.3.7）、300（3.7.0）</td><td>待機 10 step（action [0, …, 0, −1]）の後、最大 300 step</td></tr>
+  <tr><td>推論</td><td>chunk 50 のうち先頭 10 を実行して再計画、flow matching 10 step</td><td>chunk 10 のうち先頭 5 を実行して再計画、flow matching 10 step</td></tr>
+  <tr><td>判定</td><td colspan="2">成功：BDDL のゴール述語の成立（最初に成立した step で終了）。接触：BDDL の obj_of_interest 以外の自由物体の位置について、待機後の位置からの L1 変位（|Δx| + |Δy| + |Δz|）の最大値が、いずれかの step で 1 mm を超えたとき</td></tr>
+</table>
+</div>
+
+<table class="hp tasks">
+  <caption>表 5　π0.5 の評価タスクと学習後の結果（○ 成功・接触なし、△ ゴール到達・接触あり、× 未到達）。学習前は 16 件すべて ×</caption>
+  <thead><tr><th></th><th>指示文（学習時と同じ文）</th><th>逆にした元のタスク</th><th>同じ文</th><th>言い換え</th></tr></thead>
+  <tr><td>RT01</td><td>take the black bowl off the stove and put it back on the table between the wine bottle and the plate</td><td>libero_goal</td><td>○</td><td>○</td></tr>
+  <tr><td>RT02</td><td>take the black bowl off the plate and put it back on top of the wooden cabinet</td><td>libero_spatial</td><td>△</td><td>△</td></tr>
+  <tr><td>RT03</td><td>take the white mug off the left plate and put it back on the table to the left of the red mug</td><td>libero_10</td><td>×</td><td>△</td></tr>
+  <tr><td>RT04</td><td>take the chocolate pudding from the right of the plate and put it back on the table behind the plate</td><td>libero_10</td><td>○</td><td>△</td></tr>
+  <tr><td>RT05</td><td>take the black bowl off the top of the cabinet and put it on the stove</td><td>libero_spatial</td><td>○</td><td>○</td></tr>
+  <tr><td>RT06</td><td>take the cream cheese off the table and put it in the top drawer of the cabinet</td><td>libero_goal</td><td>○</td><td>△</td></tr>
+  <tr><td>RT07</td><td>take the yellow book off the top of the shelf and put it back on the table on the left</td><td>libero_90</td><td>○</td><td>○</td></tr>
+  <tr><td>RT08</td><td>take the ketchup and the tomato sauce out of the tray, then put the ketchup on the table behind the alphabet soup and the tomato sauce behind the butter</td><td>libero_90</td><td>×</td><td>×</td></tr>
+</table>
+<p class="credits">学習データには各タスクの INIT 0 の記録が含まれ、評価の初期状態と重なる。</p>
+
+<h2 class="new-page">5. 使用したソフトウェア・モデル</h2>
 <table class="sw">
-  <tr><th>名称</th><th>用途</th><th>版・入手先</th><th>ライセンス</th><th>文献</th></tr>
+  <caption>表 6　使用したソフトウェア・モデル</caption>
+  <thead><tr><th>名称</th><th>用途</th><th>版・入手先</th><th>ライセンス</th><th>文献</th></tr></thead>
   <tr><td>LIBERO</td><td>ベンチマーク</td><td>github.com/Lifelong-Robot-Learning/LIBERO</td><td>MIT（データセットは CC BY 4.0）</td><td>[1]</td></tr>
   <tr><td>LIBERO-Plus</td><td>シミュレータのタスク</td><td>github.com/sylvestf/LIBERO-plus（commit 4976dc3）</td><td>記載なし</td><td>[2]</td></tr>
-  <tr><td>MuJoCo</td><td>物理エンジン</td><td>3.7.0</td><td>Apache-2.0</td><td>[3]</td></tr>
-  <tr><td>robosuite</td><td>ロボット環境</td><td>1.4.0</td><td>MIT</td><td>[4]</td></tr>
+  <tr><td>MuJoCo</td><td>物理エンジン</td><td>3.7.0（teleop。評価の版は表 4）</td><td>Apache-2.0</td><td>[3]</td></tr>
+  <tr><td>robosuite</td><td>ロボット環境</td><td>1.4.0（teleop。評価の版は表 4）</td><td>MIT</td><td>[4]</td></tr>
   <tr><td>LeRobot</td><td>データ形式・学習</td><td>0.6.0</td><td>Apache-2.0</td><td>[7]</td></tr>
   <tr><td>SmolVLA</td><td>VLA</td><td>lerobot/smolvla_libero_plus（Hugging Face）</td><td>Apache-2.0</td><td>[5]</td></tr>
   <tr><td>π0.5 / openpi</td><td>VLA</td><td>github.com/Physical-Intelligence/openpi</td><td>Apache-2.0。π0.5 は PaliGemma [9] が基で、その重みには Gemma Terms of Use が適用される</td><td>[6]</td></tr>

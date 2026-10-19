@@ -3,6 +3,7 @@
     actions.png       動画の 1 本（ボウルをコンロに載せる）の 6 軸の命令と、同時に動いていた軸の数
     hud.png           画面下の状態表示（INPUT のバー・EEF の値・姿勢ダイヤル）
     speed_time.png    状態表示の SPEED / TIME
+    guides.png        正面カメラに重ねた鉛直線などの表示補助（グリッパが机の上と、ボウルの縁の上の 2 コマ）
     controller.png    コントローラの割り当て（動画の操作方法の画面）
 
 元の素材（teleop の記録・画面録画・動画のパーツ）は Git に入れていない。手元で作り直すときだけ要る。
@@ -15,7 +16,7 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 HERE = Path(__file__).resolve().parents[1]
 ROOT = HERE.parents[1]
@@ -77,6 +78,25 @@ def screen_figures(mov: Path, at: float, window: str) -> None:
     print(f"hud.png / speed_time.png: {mov.name} の {at} 秒")
 
 
+def guides_figure(mov: Path, times: list[float], window: str) -> None:
+    """正面カメラ（窓の左の 1024 px 角）から、グリッパと対象物のまわりを切り出して横に並べる。"""
+    ww, wh, wx, wy = map(int, window.split(":"))
+    title_bar = 56                                   # 窓の上の題名の帯
+    box = (290, 330, 850, 890)                       # 正面カメラの中で切り出す範囲（px）
+    gap, size = 16, box[2] - box[0]
+    out = Image.new("RGB", (len(times) * size + (len(times) - 1) * gap, size), (255, 255, 255))
+    label_font = ImageFont.truetype(FONT.replace("W3", "W6"), 34)
+    for i, at in enumerate(times):
+        shot = frame(mov, at, TMP / f"guides_{i}.png", f"1024:1024:{wx}:{wy + title_bar}")
+        panel = shot.crop(box)
+        d = ImageDraw.Draw(panel)
+        d.rounded_rectangle((12, 12, 70, 62), radius=8, fill=(255, 255, 255))
+        d.text((41, 37), f"({'abcd'[i]})", font=label_font, fill=(20, 20, 20), anchor="mm")
+        out.paste(panel, (i * (size + gap), 0))
+    out.save(FIG / "guides.png")
+    print(f"guides.png: {mov.name} の {', '.join(map(str, times))} 秒")
+
+
 def controller_figure(part: Path, at: float) -> None:
     shot = frame(part, at, TMP / "controller_full.png")
     shot.crop((0, 150, 1920, 1010)).resize((1440, 645), Image.LANCZOS).save(FIG / "controller.png")
@@ -89,6 +109,7 @@ def main() -> None:
     ap.add_argument("--mov", type=Path, default=ROOT / "report/video/assets/teleop/b2.mov", help="画面録画")
     ap.add_argument("--at", type=float, default=9.0, help="画面録画から取るコマの秒")
     ap.add_argument("--window", default="2560:1376:112:76", help="画面録画の窓の範囲（w:h:x:y）")
+    ap.add_argument("--guides-at", type=float, nargs="+", default=[5.0, 6.0], help="表示補助の図に使うコマの秒")
     ap.add_argument("--controller", type=Path, default=ROOT / "report/video/build/parts/controller.mp4")
     args = ap.parse_args()
     FIG.mkdir(parents=True, exist_ok=True)
@@ -96,6 +117,7 @@ def main() -> None:
     npz = args.npz or sorted((ROOT / "teleop/recordings/libero_goal/normal/t1147").glob("*.npz"))[-1]
     actions_figure(npz)
     screen_figures(args.mov, args.at, args.window)
+    guides_figure(args.mov, args.guides_at, args.window)
     controller_figure(args.controller, 7.5)
 
 
