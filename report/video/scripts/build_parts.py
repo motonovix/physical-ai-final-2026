@@ -57,6 +57,15 @@ def duration(path: Path) -> float:
     return float(out.strip())
 
 
+def video_duration(path: Path) -> float:
+    """映像のストリームの長さ（コマ数 / fps）。"""
+    out = subprocess.check_output(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets",
+                                   "-show_entries", "stream=nb_read_packets,r_frame_rate", "-of", "csv=p=0",
+                                   str(path)], text=True).strip().split(",")
+    num, den = map(int, out[0].split("/"))
+    return int(out[1]) * den / num
+
+
 def has_audio(path: Path) -> bool:
     out = subprocess.check_output(["ffprobe", "-v", "error", "-select_streams", "a",
                                    "-show_entries", "stream=index", "-of", "csv=p=0", str(path)], text=True)
@@ -826,11 +835,14 @@ def narrate(part: Path, audio: Path, cfg: dict) -> tuple[Path, float]:
     total = max(d_part, lead + d_audio + tail)
     out = BUILD / "narrated" / part.name
     out.parent.mkdir(parents=True, exist_ok=True)
-    ms = int(lead * 1000)
+    # 頭の無音は adelay ではなく、無音のデータをつないで作る。adelay だと mp4 の編集リスト
+    # （開始の遅れ）として記録されることがあり、つなぐときにその分が捨てられて音声が前へずれた。
     ffmpeg(["-i", part, "-i", audio, "-filter_complex",
             f"[0:v]tpad=stop_mode=clone:stop_duration={total - d_part + 0.1:.3f}[v];"
-            f"[1:a]aresample=48000,aformat=channel_layouts=stereo,loudnorm=I=-16:TP=-1.5:LRA=11,"
-            f"aresample=48000,adelay={ms}|{ms},apad[a]",
+            f"[1:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,"
+            f"loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,asetpts=N/SR/TB[n];"
+            f"anullsrc=r=48000:cl=stereo,atrim=0:{lead:.3f},aformat=sample_fmts=fltp[s];"
+            f"[s][n]concat=n=2:v=0:a=1,apad,atrim=0:{total:.3f}[a]",
             "-map", "[v]", "-map", "[a]", "-t", f"{total:.3f}", *VCODEC, *ACODEC, out])
     return out, total - d_part
 
@@ -851,10 +863,19 @@ def final(args: argparse.Namespace) -> None:
             src = "自分の声" if audio.parent == ASSETS / "narration" else f"読み上げ（{narration.get('engine', 'say')}）"
             print(f"  {n:<16} {src}  {duration(audio):5.1f} s" + (f"  （{extra:.1f} s 延ばした）" if extra > 0 else ""))
         files.append(part)
-    lst = TMP / "concat.txt"
-    lst.write_text("".join(f"file '{f}'\n" for f in files))
+    # 映像と音声を別々につなぐ（concat フィルタ）。各パーツの音声は、映像の長さにぴったり合わせてから
+    # つなぐ。AAC はフレーム単位なので音声が映像より数十 ms 短く、そのままだと継ぎ目ごとにずれがたまる。
+    inputs, chains = [], []
+    for i, f in enumerate(files):
+        inputs += ["-i", f]
+        v = video_duration(f)
+        chains.append(f"[{i}:v]setpts=PTS-STARTPTS[v{i}];"
+                      f"[{i}:a]aresample=48000,asetpts=PTS-STARTPTS,apad,atrim=0:{v:.6f}[a{i}]")
+    joined = "".join(f"[v{i}][a{i}]" for i in range(len(files)))
+    graph = ";".join(chains) + f";{joined}concat=n={len(files)}:v=1:a=1[vout][aout]"
     out = BUILD / "final.mp4"
-    ffmpeg(["-f", "concat", "-safe", "0", "-i", lst, *VCODEC, *ACODEC, "-movflags", "+faststart", out])
+    ffmpeg([*inputs, "-filter_complex", graph, "-map", "[vout]", "-map", "[aout]",
+            *VCODEC, *ACODEC, "-movflags", "+faststart", out])
     print(f"wrote {out.relative_to(HERE)}  {duration(out):.1f} s  ({len(names)} parts)")
 
 
