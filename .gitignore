@@ -12,3 +12,5 @@ report/video/build/
 report/video/local.mk
 # 講座の配布物（課題の公式の説明文など）。public のリポジトリに入れないので手元だけに置く
 report/official/
+# レポートの PDF と、Omnicampus のアカウント名を入れた HTML（提出時に手元で作る）
+report/doc/build/

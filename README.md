@@ -180,6 +180,7 @@ GPU ランタイム（L4 / A100 推奨。SmolVLA の LoRA は T4 でも動く。
 │   ├── pi05_libero_finetune.ipynb      # π0.5 の追加学習と動画での評価（Colab）
 │   └── vladrop_drop9_finetune.ipynb    # π0.5 軽量版（VLADrop Drop9）の追加学習。提出動画のモデル（Colab）
 ├── report/
+│   ├── doc/                            # 提出レポート（HTML の下書き → PDF。PDF は Git 管理外）
 │   └── video/                          # 提出動画の素材づくりと書き出し（素材と書き出しは Git 管理外）
 ├── requirements.txt                    # teleop の実行環境（Python 3.10）
 ├── requirements-sim.txt                # シミュレータの版の契約（起動時に照合）

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ゲームコントローラと MacBook で始めるフィジカル AI</title>
+<link rel="stylesheet" href="report.css">
+</head>
+<body>
+
+<!--
+  提出レポートの下書き。ブラウザで開いて確かめ、PDF は make pdf で作る（README.md）。
+  Omnicampus のアカウント名と動画の URL は、ここには書かない。make pdf の実行時に入力し、
+  build/ の PDF にだけ入る（data-fill の要素を置き換える）。
+-->
+
+<header>
+  <p class="kicker">PAI 最終課題　説明資料</p>
+  <h1>ゲームコントローラと MacBook で始めるフィジカル AI</h1>
+  <p class="sub">LIBERO のロボットをテレオペしてデモを集め、VLA を追加学習する</p>
+  <dl>
+    <dt>Omnicampus</dt><dd><span data-fill="omnicampus-id">（提出時に記入）</span></dd>
+    <dt>動画</dt><dd><span data-fill="youtube-url">（提出時に記入）</span></dd>
+    <dt>コード</dt><dd><a href="https://github.com/motonovix/physical-ai-final-2026">github.com/motonovix/physical-ai-final-2026</a></dd>
+  </dl>
+</header>
+
+<h2>1. 概要</h2>
+<p>
+  手元の MacBook とゲームコントローラ（Nintendo Switch Pro コントローラ）だけで、シミュレータ上のロボットアームを人が操作し（テレオペ）、
+  その操作の記録を教師データにして VLA（Vision-Language-Action モデル）を追加学習し、シミュレータで評価した。
+  シミュレータは LIBERO-Plus（MuJoCo / robosuite）で、テレオペの環境は Claude Code と対話しながら自作した。
+</p>
+<div class="flow">
+  <div class="step"><b>① テレオペ</b><span>MacBook＋コントローラ<br>Claude Code で自作</span></div>
+  <div class="arrow">→</div>
+  <div class="step"><b>② デモの記録</b><span>操作の軌跡を記録<br>LeRobot 形式に変換</span></div>
+  <div class="arrow">→</div>
+  <div class="step"><b>③ VLA の追加学習</b><span>SmolVLA・π0.5<br>Google Colab の GPU</span></div>
+  <div class="arrow">→</div>
+  <div class="step"><b>④ シミュレータで評価</b><span>LIBERO で解かせる<br>成功率と動画</span></div>
+</div>
+<p>
+  テレオペの命令は、VLA が出す命令と同じ形（20 Hz、手先の移動 3 軸＋回転 3 軸＋グリッパ）にした。
+  記録はシミュレータの状態と命令の列だけを持ち、学習用の画像（正面と手首の 2 カメラ）は後から描き直す。
+  ゴールの条件が成り立ち、かつ対象外の物を 1 mm 以上動かしていないときだけ成功と判定する。
+</p>
+
+<h2>2. ゲームコントローラならではの利点</h2>
+<p>動画では伝えきれなかった、ゲームコントローラでテレオペする利点を 3 つ挙げる。数字は、動画で見せた 1 本（タスク「ボウルをコンロに載せる」、116 ステップ）の記録から出した。</p>
+
+<div class="point">
+  <h3><span class="num">①</span> 6 軸を同時に、なめらかに動かせる</h3>
+  <p>
+    このリポジトリの teleop のキーボード操作では、新しいキーを押すとほかの軸の入力が 0 に戻るので、一度に動かせるのは 1 軸だけで、速さも一定になる。
+    ゲームコントローラでは、2 本のスティックと肩のボタンに 6 軸を割り当て、倒し具合をそのまま速さにした（図 1）。両手で、移動と回転を同時に、強弱をつけて入力できる。
+  </p>
+  <p>
+    実際、手先が動いていた 79 ステップのうち <strong>71 ステップ（90%）で 2 軸以上</strong>、22 ステップ（28%）で 3 軸以上、最大で 5 軸を同時に動かしていた（図 2）。
+    たとえば 10 ステップ目は、前・右・上に進みながら手首を回している（x 0.73、y −0.61、z 0.46、yaw 0.58）。
+    命令の大きさも 0〜1 の間で連続して変わり（中央値 0.47）、VLA が出す命令と同じく、なめらかな教師データになる。
+  </p>
+  <div class="figs">
+    <figure>
+      <img src="figures/controller.png" alt="コントローラの割り当て">
+      <figcaption>図 1　コントローラの割り当て。移動（青）・回転（橙）・グリッパ（緑）。L・R・ZL・ZR は上の縁のボタン。</figcaption>
+    </figure>
+    <figure>
+      <img src="figures/actions.png" alt="6 軸の命令と同時に動いた軸の数">
+      <figcaption>図 2　動画の 1 本の 6 軸の命令（上）と、同時に動いていた軸の数（下、赤は 2 軸以上）。</figcaption>
+    </figure>
+  </div>
+</div>
+
+<div class="point">
+  <h3><span class="num">②</span> 時間スケールと速さを分けて調整し、実時間より速い教師データを作れる</h3>
+  <div class="side">
+    <figure>
+      <img src="figures/speed_time.png" alt="SPEED と TIME の表示">
+      <figcaption>図 3　画面の表示。</figcaption>
+    </figure>
+    <div class="text">
+      <p>
+        teleop では 2 つの倍率を別々に変えられる（READY・PAUSE 中に R/L と ZR/ZL で調整）。
+        <strong>TIME</strong> は画面上の時間の進み方だけを変え、シミュレーションの刻み（20 Hz）は変えない。1 より小さくすると、人はスローモーションで落ち着いて操作できる。
+        <strong>SPEED</strong> は 1 ステップあたりの手先の動きの大きさを変える。上げると、少ないステップで目的の位置に届く。
+      </p>
+    </div>
+  </div>
+  <p>
+    動画の 1 本は TIME 0.7・SPEED 1.3 で操作した。画面上では約 10 秒かけて操作したが、記録には 116 ステップ、つまり 20 Hz で 5.8 秒の動きとして残る。
+    方策は 20 Hz で動くので、<strong>人が実際にかけた時間より約 1.8 倍速い動きを手本にできる</strong>。操作はゆっくり正確に、データは速く、を両立できる。
+  </p>
+  <div class="timebar">
+    <div class="row"><span class="label">操作した時間</span><span class="bar wall">約 10 秒（画面上）</span></div>
+    <div class="row"><span class="label">記録上の時間</span><span class="bar data">5.8 秒（116 ステップ × 20 Hz）</span></div>
+  </div>
+  <p class="credits">画面上の時間は、画面録画に映る STEP の進み方（1 秒あたり約 11 ステップ）から出した。TIME 0.7 なら 1 秒あたり 14 ステップのはずだが、3 視点の描画が追いつかず少し遅くなる。</p>
+</div>
+
+<div class="point">
+  <h3><span class="num">③</span> 回転のかかり具合が、円の針で一目で分かる</h3>
+  <p>
+    画面下の 3 つの円（ROLL・PITCH・YAW）は、手先が今どれだけ傾いているかを針で示す。上が 0° で、コントローラを倒した向きと同じ向きに針が振れるようにした。
+    左の INPUT のバーは「今どう動かそうとしているか」を表すので、「指示」と「結果」を分けて見られる。
+    回転は 3 つのカメラ映像だけでは分かりにくく、数字（+39° など）よりも針のほうが直感的に読める（図 4）。
+  </p>
+  <figure>
+    <img src="figures/hud.png" alt="画面下の状態表示">
+    <figcaption>図 4　画面下の状態表示。左から INPUT（命令）のバーと EEF（手先の実際の位置・姿勢）、右が姿勢の円。この場面では YAW の針が +39° 傾いている。</figcaption>
+  </figure>
+</div>
+
+<h2>3. 学習と評価の結果</h2>
+<table>
+  <tr><th>モデル</th><th>教師データと学習</th><th>評価</th></tr>
+  <tr>
+    <td>SmolVLA</td>
+    <td>人がテレオペで解いた 18 本（赤いマグを皿から戻すタスク）。Colab の L4 で LoRA（r16）を 1,000 step。</td>
+    <td>学習に使った初期配置で 1 試行し、成功。条件を変えた別の 2 試行は時間内に届かず、汎化は未確認。</td>
+  </tr>
+  <tr>
+    <td>π0.5</td>
+    <td>π0.5 の軽量版（言語モデルの層を半分に減らしたもの）を起点に、元の LIBERO のタスクを逆向きにしたタスクの教師データ（415 episode）で全体を 600 step。Colab の A100 で約 22 分。</td>
+    <td>逆向きの 16 タスク（8 種 × 指示文 2 通り）を各 1 試行。<strong>学習前 0/16 → 学習後 13/16</strong>（ほかの物を動かさずに成功したのは 8）。</td>
+  </tr>
+</table>
+<p>学習と評価に使ったコードは、リポジトリの <code>notebooks/</code> に Colab の notebook としてまとめた。</p>
+
+<h2>4. 今後</h2>
+<ul>
+  <li><strong>ROS2 で実機へ。</strong>同じコントローラと同じ命令の形のまま、入力と手先の状態をトピックで流せば、実機のアームを操作してデモを集められる。</li>
+  <li><strong>接触と汎化。</strong>成功した 13 タスクのうち 5 タスクはほかの物にも当たっていた。学習と評価の初期配置も重なっているので、未知の配置で解けるかを確かめる。</li>
+</ul>
+
+<h2>5. 使ったもの</h2>
+<div class="credits">
+  <p>シミュレータ・モデル・学習：LIBERO（MIT License、データセットは CC BY 4.0）、LIBERO-Plus（Fei et al., 2025）、robosuite（MIT License）、MuJoCo（Apache-2.0）、LeRobot（Apache-2.0）、SmolVLA（Apache-2.0）、π0.5 / openpi（Physical Intelligence、Apache-2.0。重みは PaliGemma が基で Gemma の利用規約に従う）、pygame、OpenCV、Google Colab。</p>
+  <p>開発・動画制作：Claude Code（Anthropic）、AivisSpeech: まお（Aivis Common Model License 1.0）、FFmpeg、Pillow、Pygments。</p>
+  <p>Nintendo Switch は任天堂の商標、MacBook は Apple Inc. の商標です。その他の会社名・製品名は各社の商標または登録商標です。</p>
+</div>
+
+</body>
+</html>

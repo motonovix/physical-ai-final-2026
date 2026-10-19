@@ -1,0 +1,89 @@
+/* 提出レポートの版面（A4）。ブラウザでも PDF（Chrome の印刷）でも同じ見た目にする。
+ * 文字の大きさや余白を変えるとページ数が変わるので、直したら make draft でページを確かめる。
+ */
+
+@page { size: A4; margin: 13mm 14mm 12mm; }
+
+:root {
+  --ink: #1a1a1a;
+  --muted: #5d6470;
+  --line: #d4d8de;
+  --accent: #2b7bb9;
+  --soft: #f3f6f9;
+}
+
+html { font-size: 9.1pt; }
+
+body {
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+  line-height: 1.5;
+  color: var(--ink);
+  background: #fff;
+  margin: 0;
+}
+
+/* ブラウザで見るときだけ、紙の幅に寄せる */
+@media screen {
+  body { max-width: 182mm; margin: 12mm auto; padding: 0 8mm; }
+}
+
+header { border-bottom: 2px solid var(--ink); padding-bottom: .45em; margin-bottom: .8em; }
+header .kicker { font-size: .9rem; color: var(--muted); margin: 0; }
+header h1 { font-size: 1.75rem; margin: .1em 0 .15em; letter-spacing: .02em; }
+header .sub { font-size: 1.02rem; margin: 0 0 .5em; }
+header dl { display: grid; grid-template-columns: auto 1fr; gap: .1em .9em; margin: 0; font-size: .92rem; }
+header dt { color: var(--muted); }
+header dd { margin: 0; }
+
+h2 {
+  font-size: 1.18rem;
+  margin: .85em 0 .35em;
+  padding-left: .45em;
+  border-left: 4px solid var(--accent);
+  break-after: avoid;
+}
+h3 { font-size: 1.04rem; margin: .9em 0 .3em; break-after: avoid; }
+
+p { margin: .35em 0; text-align: justify; }
+ul { margin: .3em 0; padding-left: 1.3em; }
+li { margin: .12em 0; }
+strong { font-weight: 600; }
+code { font-family: Menlo, monospace; font-size: .9em; background: var(--soft); padding: 0 .25em; border-radius: 3px; }
+a { color: var(--accent); text-decoration: none; }
+
+/* 全体の流れ（①〜④） */
+.flow { display: flex; align-items: stretch; gap: .5em; margin: .6em 0 .3em; }
+.flow .step { flex: 1; border: 1.5px solid var(--accent); border-radius: 6px; padding: .4em .5em; background: var(--soft); }
+.flow .step b { display: block; color: var(--accent); font-size: 1.0rem; }
+.flow .step span { display: block; font-size: .86rem; color: var(--muted); line-height: 1.4; }
+.flow .arrow { align-self: center; color: var(--muted); font-size: 1.1rem; }
+
+figure { margin: .6em 0; break-inside: avoid; }
+figure img { width: 100%; display: block; border-radius: 4px; }
+figcaption { font-size: .86rem; color: var(--muted); margin-top: .25em; line-height: 1.45; }
+.figs { display: flex; gap: .8em; align-items: flex-start; }
+.figs figure { flex: 1; margin: .4em 0; }
+
+/* 利点ごとの囲み */
+.point { border: 1px solid var(--line); border-radius: 6px; padding: .15em .9em .4em; margin: .55em 0; break-inside: avoid; }
+.point h3 { margin-top: .5em; }
+.num { color: var(--accent); }
+
+/* 操作した時間と記録の時間の比べ */
+.timebar { margin: .5em 0 .2em; font-size: .88rem; }
+.timebar .row { display: flex; align-items: center; gap: .6em; margin: .25em 0; }
+.timebar .label { width: 7.5em; color: var(--muted); white-space: nowrap; }
+.timebar .bar { height: 1.15em; border-radius: 3px; color: #fff; font-size: .82rem; display: flex; align-items: center; padding-left: .5em; }
+.timebar .wall { width: 70%; background: #9aa3ad; }
+.timebar .data { width: 39%; background: var(--accent); }
+
+.side { display: flex; gap: .9em; align-items: center; }
+.side figure { flex: none; width: 12%; margin: .2em 0; }
+.side .text { flex: 1; }
+
+table { border-collapse: collapse; width: 100%; margin: .4em 0; font-size: .9rem; }
+th, td { border: 1px solid var(--line); padding: .25em .5em; text-align: left; vertical-align: top; }
+th { background: var(--soft); font-weight: 600; }
+
+.credits { font-size: .82rem; color: var(--muted); line-height: 1.45; }
+.credits p { margin: .2em 0; text-align: left; }
