@@ -16,6 +16,8 @@ import json
 import re
 import shutil
 import subprocess
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
@@ -724,17 +726,63 @@ def narration_audio(name: str, cfg: dict) -> Path | None:
     spoken = text
     for word, reading in cfg.get("readings", {}).items():   # 読み上げで読み違える語を、読み方に置き換える
         spoken = spoken.replace(word, reading)
-    out = BUILD / "narration" / f"{name}.aiff"
+    engine = cfg.get("engine", "say")
+    settings = cfg.get(engine, {})
+    out = BUILD / "narration" / f"{name}.{engine}.{'aiff' if engine == 'say' else 'wav'}"
     out.parent.mkdir(parents=True, exist_ok=True)
     stamp = out.with_suffix(".txt")
-    key = f"{cfg.get('voice', 'Kyoko')}|{cfg.get('rate', '')}|{spoken}"
-    if not (out.exists() and stamp.exists() and stamp.read_text() == key):   # 台本が変わったときだけ作り直す
-        cmd = ["say", "-v", cfg.get("voice", "Kyoko"), "-o", str(out)]
-        if cfg.get("rate"):
-            cmd += ["-r", str(cfg["rate"])]
+    key = json.dumps([engine, settings, spoken], ensure_ascii=False)
+    if out.exists() and stamp.exists() and stamp.read_text() == key:     # 台本・設定が変わったときだけ作り直す
+        return out
+    if engine == "say":
+        cmd = ["say", "-v", settings.get("voice", "Kyoko"), "-o", str(out)]
+        if settings.get("rate"):
+            cmd += ["-r", str(settings["rate"])]
         subprocess.run([*cmd, spoken], check=True)
-        stamp.write_text(key)
+    elif engine == "aivisspeech":
+        out.write_bytes(aivisspeech(spoken, settings))
+    else:
+        raise SystemExit(f"知らない読み上げ: {engine}（say か aivisspeech）")
+    stamp.write_text(key)
     return out
+
+
+def aivisspeech(text: str, settings: dict) -> bytes:
+    """AivisSpeech Engine（VOICEVOX 互換の API）で読み上げ、WAV を返す。アプリを起動しておく。"""
+    base = settings.get("url", "http://127.0.0.1:10101")
+    speaker = settings.get("speaker") or aivisspeech_styles(base)[0][0]
+    try:
+        with urllib.request.urlopen(urllib.request.Request(
+                f"{base}/audio_query?" + urllib.parse.urlencode({"text": text, "speaker": speaker}),
+                method="POST"), timeout=120) as r:
+            query = json.load(r)
+    except OSError as e:
+        raise SystemExit(f"AivisSpeech に届かない（{base}）。アプリを起動してから作り直す: {e}")
+    for field in ("speedScale", "intonationScale", "tempoDynamicsScale", "volumeScale",
+                  "prePhonemeLength", "postPhonemeLength"):
+        if field in settings:
+            query[field] = settings[field]
+    req = urllib.request.Request(f"{base}/synthesis?speaker={speaker}", method="POST",
+                                 data=json.dumps(query).encode(), headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=300) as r:
+        return r.read()
+
+
+def aivisspeech_styles(base: str) -> list[tuple[int, str]]:
+    """入っている声と話し方の一覧（style ID, 「話者 / 話し方」）。"""
+    try:
+        with urllib.request.urlopen(f"{base}/speakers", timeout=10) as r:
+            speakers = json.load(r)
+    except OSError as e:
+        raise SystemExit(f"AivisSpeech に届かない（{base}）。アプリを起動してから作り直す: {e}")
+    return [(style["id"], f"{sp['name']} / {style['name']}") for sp in speakers for style in sp["styles"]]
+
+
+def voices(args: argparse.Namespace) -> None:
+    narration = json.loads((HERE / "clips.json").read_text()).get("narration", {})
+    base = narration.get("aivisspeech", {}).get("url", "http://127.0.0.1:10101")
+    for style_id, label in aivisspeech_styles(base):
+        print(f"{style_id:>12}  {label}")
 
 
 def narrate(part: Path, audio: Path, cfg: dict) -> tuple[Path, float]:
@@ -766,7 +814,7 @@ def final(args: argparse.Namespace) -> None:
         audio = narration_audio(Path(n).stem, narration) if narration else None
         if audio:
             part, extra = narrate(part, audio, narration)
-            src = "自分の声" if audio.parent == ASSETS / "narration" else "読み上げ"
+            src = "自分の声" if audio.parent == ASSETS / "narration" else f"読み上げ（{narration.get('engine', 'say')}）"
             print(f"  {n:<16} {src}  {duration(audio):5.1f} s" + (f"  （{extra:.1f} s 延ばした）" if extra > 0 else ""))
         files.append(part)
     lst = TMP / "concat.txt"
@@ -788,12 +836,13 @@ def main() -> None:
     n = sub.add_parser("norm")
     n.add_argument("--force", action="store_true", help="作り済みでも作り直す")
     sub.add_parser("sheet")
+    sub.add_parser("voices", help="AivisSpeech に入っている声と話し方（style ID）を並べる")
     f = sub.add_parser("final")
     f.add_argument("--no-narration", action="store_true", help="ナレーションを入れずにつなぐ")
     args = ap.parse_args()
     for d in (PARTS, TMP):
         d.mkdir(parents=True, exist_ok=True)
-    {"collect": collect, "parts": parts, "norm": norm, "sheet": sheet, "final": final}[args.cmd](args)
+    {"collect": collect, "parts": parts, "norm": norm, "sheet": sheet, "final": final, "voices": voices}[args.cmd](args)
 
 
 if __name__ == "__main__":

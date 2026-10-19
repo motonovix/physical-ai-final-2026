@@ -150,8 +150,16 @@ YouTube の推奨に合わせ、すべてのパーツを同じ形式にそろえ
 ## ナレーション
 
 台本は [clips.json](clips.json) の `narration.lines` に、パーツの名前（`teleop_b` など）ごとに書く。
-`make final` で、場面ごとに Mac の読み上げ（`say`、既定の声は Kyoko）で音声を作り、その場面に重ねる。
-台本を変えた場面だけ読み上げを作り直す。
+`make final` で、場面ごとに読み上げの音声を作り、その場面に重ねる。台本や設定を変えた場面だけ作り直す。
+
+読み上げは `narration.engine` で選ぶ。
+
+- **`say`：** Mac の読み上げ。声は `narration.say.voice`（既定 Kyoko）。
+- **`aivisspeech`：** [AivisSpeech](https://aivis-project.com/speech/)（無料・手元で動く）。アプリを起動しておくと、
+  `127.0.0.1:10101` の API（VOICEVOX 互換の `/audio_query` → `/synthesis`）で読み上げる。
+  声は `narration.aivisspeech.speaker` に style ID を書く（`make voices` で一覧。空なら最初の声）。
+  `speedScale`・`intonationScale`・`tempoDynamicsScale` なども同じ所に書ける。
+  使う声のモデルの利用規約（クレジット表記の要否）を確かめる。
 
 - **自分の声に差し替える：** `assets/narration/<パーツの名前>.m4a`（`.wav`・`.aiff`・`.mp3` も可）を置くと、その場面だけ読み上げの代わりに使う。
   ほかの場面は読み上げのまま。QuickTime の「新規オーディオ収録」や iPhone のボイスメモで録ればよい。
