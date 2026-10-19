@@ -12,7 +12,7 @@
 
 | # | 区間 | 長さの目安 | 中身 | 素材 | パーツ（`build/parts/`） |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 0 | タイトル | 2 秒 | 「ゲームコントローラと MacBook で始める フィジカル AI」＋副題 | 文字の画面（clips.json の `title`） | `title.mp4`（2 秒） |
+| 0 | タイトル | 2 秒（ナレーションで約 4 秒に延びる） | 「ゲームコントローラと MacBook で始める フィジカル AI」＋副題 | 文字の画面（clips.json の `title`） | `title.mp4`（2 秒） |
 | 1 | 全体の流れ | 6 秒 | ① テレオペ → ② デモの記録 → ③ VLA の追加学習 → ④ シミュレータで評価 の図（左から順に出る） | 図（clips.json の `overview`） | `overview.mp4`（6 秒） |
 | 1′ | 使う機材 | 5 秒 | Switch Pro コントローラと、teleop を映した MacBook の写真。2 つに吹き出しを付ける | [写真 E](#撮る素材)（clips.json の `photo`） | `photo.mp4`（5 秒） |
 | 1″ | 操作方法 | 8 秒 | コントローラの写真に割り当てを色分けで書き込む。移動（青）→ 回転（橙）→ グリッパ（緑）の順に出す。L・R・ZL・ZR は写らないので四角で描き足す | 写真（clips.json の `controller`） | `controller.mp4`（8 秒） |
@@ -27,7 +27,7 @@
 | 9 | 結果 | 6〜8 秒 | 16 問の成否：学習前 0/16 → 学習後 13/16（ほかの物を動かさずに成功 8 問） | 同上 | `results.mp4`（今 5 秒） |
 | 10 | まとめ | 8 秒 | 冒頭の流れ図に結果（6 軸＋グリッパ、0/16 → 13/16 など）を書き込み、点線の ⑤「実機へ（ROS2）」を次にやることとして出す。下に課題を一行 | 図（clips.json の `recap`） | `recap.mp4`（8 秒） |
 | 11 | 締め | 4 秒 | 題名・「コードは GitHub で公開（リンクは概要欄）」・「東京大学　松尾・岩澤研究室／Physical AI応用編１／最終課題」の 3 行。最後は黒へ沈める | 文字の画面（clips.json の `outro`） | `outro.mp4`（4 秒） |
-| 12 | クレジット・ライセンス | 7 秒 | 左に「フィジカル AI」（LIBERO・LIBERO-Plus・robosuite・MuJoCo・LeRobot・SmolVLA・π0.5・pygame・OpenCV・Colab）、右に「動画制作」（AivisSpeech: まお・Claude Code・FFmpeg ほか）。下に商標と「公式なものではない」の一行 | 文字の画面（clips.json の `credits`） | `credits.mp4`（7 秒） |
+| 12 | クレジット・ライセンス | 7 秒 | 左に「フィジカル AI」（LIBERO・LIBERO-Plus・robosuite・MuJoCo・LeRobot・SmolVLA・π0.5・pygame・OpenCV・Colab）、右に「動画制作」（AivisSpeech: まお・Claude Code・FFmpeg ほか）。下に商標の 2 行 | 文字の画面（clips.json の `credits`） | `credits.mp4`（7 秒） |
 
 合計は約 2 分（前半 45〜60 秒、後半 40〜50 秒、文字の画面 30〜40 秒）。
 2026-10-19 時点の下書き（2〜4′ と 6〜9）は 72 秒。文字の画面（0・1・5・10）を足すと 1 分 45 秒前後になる。
