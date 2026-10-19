@@ -1,23 +1,25 @@
-# teleop で集めた教師データによる SmolVLA の追加学習
+# teleop で集めた教師データによる VLA（SmolVLA / π0.5）の追加学習
 
 ## 概要
 
 シミュレーション上のロボットアーム（LIBERO-Plus / robosuite / MuJoCo）で、**人がゲームパッドで操作してタスクを解き、
-その軌道を教師データにして VLA モデル SmolVLA を追加学習する。** 学習したモデルはシミュレータで動かし、
+その軌道を教師データにして VLA モデル（SmolVLA / π0.5）を追加学習する。** 学習したモデルはシミュレータで動かし、
 成否と動画で評価する。
 
 ```text
  ① teleop（Mac）            ② データセット化（Mac）     ③ 追加学習と評価（Colab）
- 人がタスクを解いて記録  ─▶  LeRobot 形式で HF へ  ─▶  SmolVLA を LoRA で追加学習
+ 人がタスクを解いて記録  ─▶  LeRobot 形式で HF へ  ─▶  SmolVLA / π0.5 を LoRA で追加学習
  teleop/                    dataset/                    LIBERO-Plus で動かして動画を録る
                                                         notebooks/smolvla_libero_finetune.ipynb
+                                                        notebooks/pi05_libero_finetune.ipynb
 ```
 
 | 段階 | 中身 | 状態 |
 | :--- | :--- | :--- |
 | ① teleop | LIBERO-Plus をゲームパッド / キーボードで操作し、action 列と MuJoCo の state 列を記録する（[teleop/](teleop/README.md)） | 動く |
 | ② データセット化 | 記録した state 列から 2 カメラの 256px 画像を描き直し、LeRobot v3.0 形式にして Hugging Face に置く（[dataset/](dataset/README.md)） | 動く（手元の記録で確認。HF へはまだ上げていない） |
-| ③ 追加学習と評価 | SmolVLA（`lerobot/smolvla_libero_plus`）を追加学習し、学習前後のモデルを LIBERO-Plus で動かして動画を残す（[notebook](notebooks/smolvla_libero_finetune.ipynb)） | 動く（公開データで確認） |
+| ③ 追加学習と評価（SmolVLA） | SmolVLA（`lerobot/smolvla_libero_plus`）を追加学習し、学習前後のモデルを LIBERO-Plus で動かして動画を残す（[notebook](notebooks/smolvla_libero_finetune.ipynb)） | 動く（公開データで確認） |
+| ③ 追加学習と評価（π0.5） | π0.5（`lerobot/pi05_libero_finetuned_v044`）を LoRA で追加学習し、同じように動画を残す（[notebook](notebooks/pi05_libero_finetune.ipynb)） | parc2026 で使った学習 notebook から移植。この notebook 自体は Colab でまだ通していない |
 
 ## ① teleop で教師データを集める
 
@@ -52,7 +54,11 @@ make -C dataset push    # Hugging Face へ上げる（既定 private）
 描画は teleop と同じ Python 3.10 の環境、書き出しは LeRobot 0.6 の Python 3.12 の環境で動かす
 （シミュレータは NumPy 1.26、LeRobot 0.6 は NumPy 2 を要するため）。
 
-## ③ SmolVLA を追加学習して動画で評価する
+## ③ SmolVLA / π0.5 を追加学習して動画で評価する
+
+notebook は SmolVLA 用と π0.5 用の 2 本あり、どちらも同じ流れで動く。
+
+### SmolVLA
 
 [notebooks/smolvla_libero_finetune.ipynb](notebooks/smolvla_libero_finetune.ipynb) を Colab で開き、上から順に実行する
 （[Colab で開く](https://colab.research.google.com/github/motonovix/physical-ai-final-2026/blob/main/notebooks/smolvla_libero_finetune.ipynb)）。
@@ -70,10 +76,30 @@ make -C dataset push    # Hugging Face へ上げる（既定 private）
 同じタスクで評価する。teleop のデータセット（②）を上げたら `DATASET_REPO` を差し替え、`DATASET_REVISION` と
 `DATASET_TASK_FILTER` を `None` にする。
 
-学習データと評価の観測は次の約束でそろえている（`lerobot/libero_plus` と同じ形式）。
+### π0.5
+
+[notebooks/pi05_libero_finetune.ipynb](notebooks/pi05_libero_finetune.ipynb) を Colab で開き、上から順に実行する
+（[Colab で開く](https://colab.research.google.com/github/motonovix/physical-ai-final-2026/blob/main/notebooks/pi05_libero_finetune.ipynb)）。
+セクションの分け方は SmolVLA 版と同じ。学習の条件は、parc2026 で π0.5 を Colab で学習したときの notebook
+（LeRobot v0.6.0）に合わせた。
+
+| 項目 | 内容 |
+| :--- | :--- |
+| 初期重み | `lerobot/pi05_libero_finetuned_v044` |
+| 学習 | 視覚エンコーダを凍結し、Action Expert に LoRA（r 16・α 8）。1,000 step・batch 8・lr 1e-4 → 1e-5 |
+| 画像のキー | データセットの `front` / `wrist` を、π0.5 の `image` / `image2` へ付け替える（`RENAME_MAP`） |
+| 正規化の統計量 | 既定は初期重みのものをマージ後のモデルに置く（`PROCESSOR_FROM`） |
+| episode の選び方 | 既定は `lerobot/libero_plus` の 40 タスクから、タスクごとに長さ順で均等に 12 本（480 episode） |
+| GPU | L4 / A100（VRAM 24 GB 以上で bf16 が使えるもの）。tokenizer を取る gated の `google/paligemma-3b-pt-224` の利用条件に同意しておく |
+
+teleop のデータセット（②）を上げたら `DATASET_REPO` を差し替え、`DATASET_REVISION` と `EPISODES_PER_TASK` を `None` にする。
+
+### 観測のそろえ方
+
+学習データと評価の観測は次の約束でそろえている（`lerobot/libero_plus` と同じ形式）。2 本の notebook で共通。
 
 - 画像のキーは `observation.images.front`（`agentview`）と `observation.images.wrist`（`robot0_eye_in_hand`）。
-  **env の生画像を 180° 回転**した向きで持つ
+  **env の生画像を 180° 回転**した向きで持つ（π0.5 には `image` / `image2` という名前で渡す）
 - 状態は 8 次元（eef 位置 3 + eef 姿勢の軸角 3 + グリッパ指の位置 2）
 - 指示文は LIBERO-Plus のタスクの文をそのまま使う
 
@@ -113,8 +139,8 @@ make -C dataset push                  # Hugging Face へ上げる（既定 priva
 
 ### 追加学習と評価（Colab）
 
-GPU ランタイム（L4 / A100 推奨、T4 でも LoRA は動く）を選び、Colab の Secrets に `HF_TOKEN` を登録して、
-notebook を上から実行する。必要なパッケージは notebook の中で入れる。
+GPU ランタイム（L4 / A100 推奨。SmolVLA の LoRA は T4 でも動く。π0.5 は L4 / A100）を選び、Colab の Secrets に
+`HF_TOKEN` を登録して、notebook を上から実行する。必要なパッケージは notebook の中で入れる。
 
 ## ディレクトリ構成
 
@@ -128,7 +154,8 @@ notebook を上から実行する。必要なパッケージは notebook の中�
 │   ├── scripts/
 │   └── build/                          # 描画結果と書き出したデータセット（Git 管理外）
 ├── notebooks/
-│   └── smolvla_libero_finetune.ipynb   # SmolVLA の追加学習と動画での評価（Colab）
+│   ├── smolvla_libero_finetune.ipynb   # SmolVLA の追加学習と動画での評価（Colab）
+│   └── pi05_libero_finetune.ipynb      # π0.5 の追加学習と動画での評価（Colab）
 ├── report/
 │   └── video/                          # 提出動画の素材づくりと書き出し（素材と書き出しは Git 管理外）
 ├── requirements.txt                    # teleop の実行環境（Python 3.10）
@@ -144,7 +171,7 @@ notebook を上から実行する。必要なパッケージは notebook の中�
 ## クレジット・注意事項
 
 - teleop のコードは、提出者が別の非公開リポジトリ（PARC2026 コンペ用）で作ったものを最小構成で移植した。
-  notebook も同じリポジトリでの SmolVLA の学習・評価の経験をもとに、このリポジトリ用に書き起こした。
-- [LeRobot](https://github.com/huggingface/lerobot)（SmolVLA）、[LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO)、
+  notebook も同じリポジトリでの SmolVLA / π0.5 の学習・評価のコードをもとに、このリポジトリ用に書き起こした。
+- [LeRobot](https://github.com/huggingface/lerobot)（SmolVLA / π0.5）、[LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO)、
   [LIBERO-plus](https://github.com/sylvestf/LIBERO-plus) を使う（このリポジトリには含めない）。
 - 講義資料や配布物そのものは、このリポジトリには含めない。講義の内容は、公開できる範囲で要約・整理して扱う。
