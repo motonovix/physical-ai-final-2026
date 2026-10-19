@@ -1,0 +1,9 @@
+# parc2026 の元動画の置き場所。local.mk に写して書き換える（local.mk は Git 管理外）。
+#
+#   cp local.mk.example local.mk
+#
+# VLADrop の rev8 16 問の結果フォルダ（中に runs/*/tNNN-e000/episode.json と video.mp4 がある）
+VLADROP_PRE  = /path/to/policy_lab/results/vladrop-drop9-rev8-pre
+VLADROP_POST = /path/to/policy_lab/results/vladrop-drop9-ft-rev8-post
+# SmolVLA の 1 試行のフォルダ（中に rollout.mp4 と result.json がある）
+SMOLVLA_RUN  = /path/to/evaluations/t3_red_mug_18ep_v1/step001000_seed42_teleop_env

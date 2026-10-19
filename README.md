@@ -129,6 +129,8 @@ notebook を上から実行する。必要なパッケージは notebook の中�
 │   └── build/                          # 描画結果と書き出したデータセット（Git 管理外）
 ├── notebooks/
 │   └── smolvla_libero_finetune.ipynb   # SmolVLA の追加学習と動画での評価（Colab）
+├── report/
+│   └── video/                          # 提出動画の素材づくりと書き出し（素材と書き出しは Git 管理外）
 ├── requirements.txt                    # teleop の実行環境（Python 3.10）
 ├── requirements-sim.txt                # シミュレータの版の契約（起動時に照合）
 └── teleop/                             # LIBERO-Plus を人の手で操作・記録する

@@ -6,3 +6,7 @@ __pycache__/
 MUJOCO_LOG.TXT
 .venv-lerobot/
 dataset/build/
+# 動画の素材と書き出し（重いので Git に入れない。手順は report/video/README.md）
+report/video/assets/
+report/video/build/
+report/video/local.mk
