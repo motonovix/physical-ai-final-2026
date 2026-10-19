@@ -552,5 +552,32 @@
       "学習前が 0": "学習前が ゼロ",
       "学習後が 13": "学習後が じゅうさん"
     }
+  },
+  "credits": {
+    "title": "クレジット・ライセンス",
+    "seconds": 7.0,
+    "columns": [
+      {
+        "head": "フィジカル AI（シミュレータ・モデル・学習）",
+        "items": [
+          "LIBERO — MIT License（データセットは CC BY 4.0）\nLiu et al., 2023",
+          "LIBERO-Plus — Fei et al., 2025（arXiv:2510.13626）",
+          "robosuite — MIT License ／ MuJoCo — Apache-2.0",
+          "LeRobot — Apache-2.0（Hugging Face）",
+          "SmolVLA — Apache-2.0（Hugging Face LeRobot）",
+          "π0.5 — openpi（Physical Intelligence, Apache-2.0）。重みは PaliGemma が基で、Gemma の利用規約に従う",
+          "テレオペ環境：pygame、OpenCV ／ 学習：Google Colab"
+        ]
+      },
+      {
+        "head": "動画制作",
+        "items": [
+          "ナレーション：AivisSpeech: まお\n（©Oz Chat/Trippy、CV: ねゆたろ）\nAivis Common Model License 1.0",
+          "テレオペ環境と動画づくり：Claude Code（Anthropic）",
+          "映像の加工：FFmpeg、Pillow、Pygments"
+        ]
+      }
+    ],
+    "foot": "Nintendo Switch は任天堂の商標、MacBook は Apple Inc. の商標です。その他の会社名・製品名は各社の商標または登録商標です。本動画は個人の課題制作物で、各社・各プロジェクトの公式なものではありません。"
   }
 }

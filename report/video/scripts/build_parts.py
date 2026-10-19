@@ -649,6 +649,36 @@ def part_photo(cfg: dict) -> None:
     compose(PARTS / "photo.mp4", bg, [], badges, cfg.get("seconds", 3.0))
 
 
+def part_credits(cfg: dict) -> None:
+    """クレジット・ライセンスの画面。columns を左右に並べ、下に foot を添える。"""
+    img, dr = canvas()
+    dr.text((W // 2, 80), cfg["title"], font=font(6, 50), fill=FG, anchor="mm")
+    columns = cfg["columns"]
+    gap, side = 60, 100
+    col_w = (W - 2 * side - gap * (len(columns) - 1)) // len(columns)
+    item_font, head_font = font(3, 26), font(6, 32)
+    accent = (92, 170, 220)
+    for i, col in enumerate(columns):
+        x = side + i * (col_w + gap)
+        dr.text((x, 210), col["head"], font=head_font, fill=accent)
+        dr.line((x, 262, x + col_w, 262), fill=(60, 66, 78), width=2)
+        y = 290
+        for item in col["items"]:
+            for j, line in enumerate(wrap(item, item_font, col_w - 30)):
+                if j == 0:
+                    dr.text((x, y), "・", font=item_font, fill=SUB)
+                dr.text((x + 30, y), line, font=item_font, fill=FG)
+                y += 38
+            y += 16
+    y = H - 150
+    for line in wrap(cfg.get("foot", ""), font(3, 22), W - 2 * side):
+        dr.text((W // 2, y), line, font=font(3, 22), fill=SUB, anchor="mm")
+        y += 34
+    bg = TMP / "credits_bg.png"
+    img.save(bg)
+    compose(PARTS / "credits.mp4", bg, [], [], cfg.get("seconds", 7.0), fade_in=0.4, fade_out=0.8)
+
+
 def parts(args: argparse.Namespace) -> None:
     clips = json.loads((HERE / "clips.json").read_text())
     builders = {"smolvla": lambda: part_smolvla(clips), "compare": lambda: part_compare(clips),
@@ -658,6 +688,8 @@ def parts(args: argparse.Namespace) -> None:
     for name in ("overview", "training", "recap"):
         if name in clips:
             builders[name] = lambda name=name: part_overview(clips[name], name)
+    if "credits" in clips:
+        builders["credits"] = lambda: part_credits(clips["credits"])
     if "outro" in clips:
         builders["outro"] = lambda: part_title(clips["outro"], "outro")
     if "controller" in clips and (ASSETS / "photo" / clips["controller"]["src"]).exists():
