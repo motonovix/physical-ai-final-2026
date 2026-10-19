@@ -208,7 +208,7 @@ def part_compare(clips: dict) -> None:
     total = max(d_pre, d_post) / speed + 2.0
     img, dr = canvas()
     header(dr, "追加学習の前と後（同じ問題・同じ初期配置）", clips["captions"][str(task)],
-           ep_post["instruction"], note=f"VLADrop（π0.5 系）・{speed:g} 倍速")
+           ep_post["instruction"], note=f"π0.5・{speed:g} 倍速")
     size, gap = 720, 80
     xs = [(W - 2 * size - gap) // 2, (W + gap) // 2]
     y = 250
@@ -232,7 +232,7 @@ def part_successes(clips: dict) -> None:
     x0 = (W - n * size - (n - 1) * gap) // 2
     y = 330
     img, dr = canvas()
-    header(dr, "追加学習の後：解けた問題の例", "VLADrop（π0.5 系）を、逆向きの課題の教師データで追加学習",
+    header(dr, "追加学習の後：解けた問題の例", "π0.5 を、逆向きの課題の教師データで追加学習",
            note="等倍速・各 1 試行")
     videos, badges = [], []
     for i, task in enumerate(tasks):
@@ -263,7 +263,7 @@ def part_results() -> None:
                  for s in ("vladrop_pre", "vladrop_post"))
     img, dr = canvas()
     header(dr, "結果：逆向きの課題 16 問（各 1 試行）",
-           "元の LIBERO の課題を逆向きにした 8 種 × 指示文 2 通り（原文・言い換え）", note="VLADrop（π0.5 系）")
+           "元の LIBERO の課題を逆向きにした 8 種 × 指示文 2 通り（原文・言い換え）", note="π0.5")
     for cx, label, s, color in ((W // 4 + 80, "追加学習の前", pre, NG), (3 * W // 4 - 80, "追加学習の後", post, OK)):
         dr.text((cx, 380), label, font=font(6, 48), fill=FG, anchor="mm")
         dr.text((cx, 560), f"{s['success']} / {s['episodes']}", font=font(6, 180), fill=color, anchor="mm")
