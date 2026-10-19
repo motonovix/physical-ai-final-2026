@@ -1,10 +1,18 @@
 # 動画の並び。build/parts/ のファイル名を上から順に書く（# から後は無視）。
+# 構成と長さの目安は README.md の「構成（案）」。（未）のパーツはできたら # を外す。
 #
-# 前半：Mac で teleop を動かしている様子の画面録画。assets/teleop/<名前>.mov に置いて make norm → teleop_<名前>.mp4
-# teleop_<名前>.mp4
+# title.mp4                # 0 タイトル（未）
+# pipeline.mp4             # 1 全体の流れ（未）
+#
+# 前半：Mac で teleop を動かしている様子の画面録画。assets/teleop/a.mov などに置いて make norm
+# teleop_a.mp4             # 2 操作環境（未）
+# teleop_b.mp4             # 3〜4 1 本解く・成功の判定と記録（未）
+#
+# training.mp4             # 5 学習へのつなぎ（未）
 #
 # 後半：parc2026 の動画（make parts）
-smolvla.mp4
-compare.mp4
-successes.mp4
-results.mp4
+smolvla.mp4                # 6 SmolVLA
+compare.mp4                # 7 π0.5 の前後比較
+successes.mp4              # 8 解けた例
+results.mp4                # 9 結果
+# outro.mp4                # 10 まとめ（未）
