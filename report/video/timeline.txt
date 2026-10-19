@@ -1,6 +1,6 @@
 # 動画の並び。build/parts/ のファイル名を上から順に書く（# から後は無視）。
 #
-# 前半：自分で撮った teleop。assets/teleop/<名前>.mov に置いて make norm → teleop_<名前>.mp4
+# 前半：Mac で teleop を動かしている様子の画面録画。assets/teleop/<名前>.mov に置いて make norm → teleop_<名前>.mp4
 # teleop_<名前>.mp4
 #
 # 後半：parc2026 の動画（make parts）
