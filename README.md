@@ -12,6 +12,7 @@
  teleop/                    dataset/                    LIBERO-Plus で動かして動画を録る
                                                         notebooks/smolvla_libero_finetune.ipynb
                                                         notebooks/pi05_libero_finetune.ipynb
+                                                        notebooks/vladrop_drop9_finetune.ipynb
 ```
 
 | 段階 | 中身 | 状態 |
@@ -20,6 +21,7 @@
 | ② データセット化 | 記録した state 列から 2 カメラの 256px 画像を描き直し、LeRobot v3.0 形式にして Hugging Face に置く（[dataset/](dataset/README.md)） | 動く（手元の記録で確認。HF へはまだ上げていない） |
 | ③ 追加学習と評価（SmolVLA） | SmolVLA（`lerobot/smolvla_libero_plus`）を追加学習し、学習前後のモデルを LIBERO-Plus で動かして動画を残す（[notebook](notebooks/smolvla_libero_finetune.ipynb)） | 動く（公開データで確認） |
 | ③ 追加学習と評価（π0.5） | π0.5（`lerobot/pi05_libero_finetuned_v044`）を LoRA で追加学習し、同じように動画を残す（[notebook](notebooks/pi05_libero_finetune.ipynb)） | parc2026 で使った学習 notebook から移植。この notebook 自体は Colab でまだ通していない |
+| ③ 追加学習（π0.5 軽量版） | 提出動画の「π0.5」を作った学習。π0.5 の軽量版（VLADrop Drop9）を全パラメータで追加学習する（[notebook](notebooks/vladrop_drop9_finetune.ipynb)） | parc2026 で動かした手順から移植。この notebook 自体は Colab でまだ通していない |
 
 ## ① teleop で教師データを集める
 
@@ -56,7 +58,8 @@ make -C dataset push    # Hugging Face へ上げる（既定 private）
 
 ## ③ SmolVLA / π0.5 を追加学習して動画で評価する
 
-notebook は SmolVLA 用と π0.5 用の 2 本あり、どちらも同じ流れで動く。
+notebook は 3 本ある。SmolVLA 用と π0.5 用の 2 本は同じ流れ（学習 → マージ → LIBERO-Plus で動画）で動く。
+もう 1 本は、提出動画の後半で「π0.5」として見せているモデル（π0.5 の軽量版）を作った学習で、学習と checkpoint の保存まで。
 
 ### SmolVLA
 
@@ -94,9 +97,28 @@ notebook は SmolVLA 用と π0.5 用の 2 本あり、どちらも同じ流れ�
 
 teleop のデータセット（②）を上げたら `DATASET_REPO` を差し替え、`DATASET_REVISION` と `EPISODES_PER_TASK` を `None` にする。
 
+### π0.5 軽量版（提出動画のモデル）
+
+[notebooks/vladrop_drop9_finetune.ipynb](notebooks/vladrop_drop9_finetune.ipynb) を Colab の A100 で開き、上から順に実行する
+（[Colab で開く](https://colab.research.google.com/github/motonovix/physical-ai-final-2026/blob/main/notebooks/vladrop_drop9_finetune.ipynb)）。
+起点は、π0.5 を LIBERO-Plus で学習し、言語モデルの 18 層のうち 9 層を落とした軽量版（VLADrop の Drop9）。
+公開されている [VLADrop](https://github.com/s1ghhh/VLADrop) の学習コード（openpi ベースの `train_pytorch.py`）で追加学習する。
+
+| 項目 | 内容 |
+| :--- | :--- |
+| 初期重み | `s1ghhh/VLADrop_pi05_LIBERO-Plus_Drop9Block_GateProbe`（落とした層 `[7, 10, 11, 12, 13, 14, 15, 16, 17]`） |
+| 学習 | 全パラメータ。600 step・batch 16・warmup 100・lr 5e-5 → 5e-6・EMA 0.999・gradient checkpointing（動画のモデルと同じ） |
+| データ | LeRobot v3.0 のデータセットの全 episode。既定は `lerobot/libero_plus`（約 16 GB）。正規化の統計量は初期重みに同梱のもの |
+| GPU | A100（VRAM 40 GB 以上）。parc2026 では 1 step 約 1.6 秒、VRAM のピーク 28.9 GB |
+| 評価 | 入れていない。checkpoint は openpi の形式で、推論にも同じ落とした層の指定が要る |
+
+動画のモデルは、元の LIBERO の課題を逆向きにした課題の教師データ（415 episode、非公開）を LeRobot v2.1 に変換して学習した。
+この notebook は、fork の LeRobot を 0.4.4 に入れ替え、データを読む関数を書き換えて v3.0 のまま読む。
+parc2026 で同じ条件をこの読み方でも回し、loss の推移が v2.1 版と一致することを確かめている。
+
 ### 観測のそろえ方
 
-学習データと評価の観測は次の約束でそろえている（`lerobot/libero_plus` と同じ形式）。2 本の notebook で共通。
+学習データと評価の観測は次の約束でそろえている（`lerobot/libero_plus` と同じ形式）。3 本の notebook で共通。
 
 - 画像のキーは `observation.images.front`（`agentview`）と `observation.images.wrist`（`robot0_eye_in_hand`）。
   **env の生画像を 180° 回転**した向きで持つ（π0.5 には `image` / `image2` という名前で渡す）
@@ -139,7 +161,7 @@ make -C dataset push                  # Hugging Face へ上げる（既定 priva
 
 ### 追加学習と評価（Colab）
 
-GPU ランタイム（L4 / A100 推奨。SmolVLA の LoRA は T4 でも動く。π0.5 は L4 / A100）を選び、Colab の Secrets に
+GPU ランタイム（L4 / A100 推奨。SmolVLA の LoRA は T4 でも動く。π0.5 は L4 / A100、π0.5 軽量版は A100）を選び、Colab の Secrets に
 `HF_TOKEN` を登録して、notebook を上から実行する。必要なパッケージは notebook の中で入れる。
 
 ## ディレクトリ構成
@@ -155,7 +177,8 @@ GPU ランタイム（L4 / A100 推奨。SmolVLA の LoRA は T4 でも動く。
 │   └── build/                          # 描画結果と書き出したデータセット（Git 管理外）
 ├── notebooks/
 │   ├── smolvla_libero_finetune.ipynb   # SmolVLA の追加学習と動画での評価（Colab）
-│   └── pi05_libero_finetune.ipynb      # π0.5 の追加学習と動画での評価（Colab）
+│   ├── pi05_libero_finetune.ipynb      # π0.5 の追加学習と動画での評価（Colab）
+│   └── vladrop_drop9_finetune.ipynb    # π0.5 軽量版（VLADrop Drop9）の追加学習。提出動画のモデル（Colab）
 ├── report/
 │   └── video/                          # 提出動画の素材づくりと書き出し（素材と書き出しは Git 管理外）
 ├── requirements.txt                    # teleop の実行環境（Python 3.10）
@@ -171,7 +194,10 @@ GPU ランタイム（L4 / A100 推奨。SmolVLA の LoRA は T4 でも動く。
 ## クレジット・注意事項
 
 - teleop のコードは、提出者が別の非公開リポジトリ（PARC2026 コンペ用）で作ったものを最小構成で移植した。
-  notebook も同じリポジトリでの SmolVLA / π0.5 の学習・評価のコードをもとに、このリポジトリ用に書き起こした。
+  notebook も同じリポジトリでの SmolVLA / π0.5 / π0.5 軽量版の学習・評価のコードをもとに、このリポジトリ用に書き起こした。
+- π0.5 軽量版の初期重みと学習コードは [VLADrop](https://github.com/s1ghhh/VLADrop)（MIT）と
+  [その公開 checkpoint](https://huggingface.co/s1ghhh/VLADrop_pi05_LIBERO-Plus_Drop9Block_GateProbe)（Apache-2.0）を使う
+  （このリポジトリには含めず、notebook の中で取得する）。
 - [LeRobot](https://github.com/huggingface/lerobot)（SmolVLA / π0.5）、[LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO)、
   [LIBERO-plus](https://github.com/sylvestf/LIBERO-plus) を使う（このリポジトリには含めない）。
 - 講義資料や配布物そのものは、このリポジトリには含めない。講義の内容は、公開できる範囲で要約・整理して扱う。
