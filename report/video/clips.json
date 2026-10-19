@@ -503,13 +503,13 @@
     }
   },
   "narration": {
-    "engine": "say",
+    "engine": "aivisspeech",
     "say": {
       "voice": "Kyoko"
     },
     "aivisspeech": {
       "url": "http://127.0.0.1:10101",
-      "speaker": null,
+      "speaker": 888753763,
       "speedScale": 1.0
     },
     "lead": 0.4,
