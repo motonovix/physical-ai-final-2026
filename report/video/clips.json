@@ -48,9 +48,58 @@
   },
   "photo": {
     "src": "setup.jpg",
-    "seconds": 3.0,
-    "title": "使う機材",
-    "sub": "Nintendo Switch Pro コントローラ（Bluetooth でつなぐ）と、teleop を動かしている MacBook"
+    "seconds": 5.0,
+    "title": "使う機材は MacBook とゲームコントローラだけ",
+    "sub": "操作は手元の MacBook、学習は Colab の GPU",
+    "photo_w": 1240,
+    "photo_xy": [
+      60,
+      255
+    ],
+    "callouts": [
+      {
+        "head": "MacBook",
+        "text": [
+          "シミュレータと自作のテレオペ環境が、",
+          "この MacBook で動く"
+        ],
+        "side": "right",
+        "at": [
+          1360,
+          395
+        ],
+        "target": [
+          1824,
+          384
+        ],
+        "color": [
+          92,
+          170,
+          220
+        ]
+      },
+      {
+        "head": "ゲームコントローラ",
+        "text": [
+          "Nintendo Switch Pro コントローラ",
+          "（Bluetooth で接続）"
+        ],
+        "side": "right",
+        "at": [
+          1360,
+          795
+        ],
+        "target": [
+          1536,
+          1133
+        ],
+        "color": [
+          80,
+          190,
+          110
+        ]
+      }
+    ]
   },
   "controller": {
     "src": "controller.jpg",

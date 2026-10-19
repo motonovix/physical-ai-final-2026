@@ -492,6 +492,23 @@ def part_code(cfg: dict) -> None:
     compose(PARTS / "code.mp4", bg, [], badges, total)
 
 
+def callout(d: ImageDraw.ImageDraw, label: dict, point: tuple, color: tuple, dot: bool = True) -> None:
+    """吹き出し：at に見出し（色）と説明（白、text は文字列か行のリスト）を書き、point へ線を引く。"""
+    ax, ay = label["at"]
+    left = label["side"] == "left"
+    anchor = ("r" if left else "l") + "s"
+    d.text((ax, ay), label["head"], font=font(6, 32), fill=color, anchor=anchor)
+    lines = label["text"] if isinstance(label["text"], list) else [label["text"]]
+    for i, line in enumerate(lines):
+        d.text((ax, ay + 40 + 38 * i), line, font=font(3, 28), fill=FG, anchor=anchor)
+    sx, sy = ax + (14 if left else -14), ay - 10
+    tx, ty = point
+    d.line((sx, sy, tx, ty), fill=(0, 0, 0, 200), width=8)
+    d.line((sx, sy, tx, ty), fill=color, width=4)
+    if dot:
+        d.ellipse((tx - 11, ty - 11, tx + 11, ty + 11), fill=color, outline=(255, 255, 255), width=3)
+
+
 def part_controller(cfg: dict) -> None:
     """コントローラの写真に、操作の割り当てを色分けして書き込む。
 
@@ -532,23 +549,13 @@ def part_controller(cfg: dict) -> None:
             note = group["shoulder_note"]
             d.text((note["at"][0], note["at"][1]), note["text"], font=font(3, 24), fill=SUB, anchor="mm")
         for label in group["labels"]:
-            ax, ay = label["at"]
-            left = label["side"] == "left"
-            anchor_h = "r" if left else "l"
-            d.text((ax, ay), label["head"], font=font(6, 32), fill=color, anchor=anchor_h + "s")
-            d.text((ax, ay + 40), label["text"], font=font(3, 28), fill=FG, anchor=anchor_h + "s")
             target = label["target"]
             if isinstance(target, str):                    # 肩のボタン：四角の内側の端へ
                 x0, y0, x1, y1 = boxes[target]
-                tx, ty = (x0 if left else x1), (y0 + y1) / 2
+                point = ((x0 if label["side"] == "left" else x1), (y0 + y1) / 2)
+                callout(d, label, point, color, dot=False)
             else:
-                tx, ty = to_frame(target)
-            sx = ax + (14 if left else -14)
-            sy = ay - 10
-            d.line((sx, sy, tx, ty), fill=(0, 0, 0, 200), width=8)
-            d.line((sx, sy, tx, ty), fill=color, width=4)
-            if not isinstance(target, str):
-                d.ellipse((tx - 11, ty - 11, tx + 11, ty + 11), fill=color, outline=(255, 255, 255), width=3)
+                callout(d, label, to_frame(target), color)
         x = lx + sum(legend_w[:gi]) + 60 * gi
         d.rounded_rectangle((x, cfg["legend_y"] - 15, x + 30, cfg["legend_y"] + 15), radius=6, fill=color)
         d.text((x + 44, cfg["legend_y"]), group["legend"], font=legend_font, fill=FG, anchor="lm")
@@ -568,16 +575,30 @@ def part_photo(cfg: dict) -> None:
         src = jpg
     photo = ImageOps.exif_transpose(Image.open(src)).convert("RGB")
     top, bottom, side = 170, 1050, 40
-    scale = min((W - 2 * side) / photo.width, (bottom - top) / photo.height)
-    photo = photo.resize((round(photo.width * scale), round(photo.height * scale)), Image.LANCZOS)
+    if "photo_w" in cfg:                          # 吹き出しを置くときは、写真の位置と幅を決め打ちする
+        scale = cfg["photo_w"] / photo.width
+    else:
+        scale = min((W - 2 * side) / photo.width, (bottom - top) / photo.height)
+    pw, ph = round(photo.width * scale), round(photo.height * scale)
+    photo = photo.resize((pw, ph), Image.LANCZOS)
+    px, py = cfg.get("photo_xy", ((W - pw) // 2, top + (bottom - top - ph) // 2))
     img, dr = canvas()
     dr.text((80, 40), cfg["title"], font=font(6, 46), fill=FG)
     if cfg.get("sub"):
         dr.text((80, 104), cfg["sub"], font=font(3, 30), fill=SUB)
-    img.paste(photo, ((W - photo.width) // 2, top + (bottom - top - photo.height) // 2))
+    img.paste(photo, (px, py))
     bg = TMP / "photo_bg.png"
     img.save(bg)
-    compose(PARTS / "photo.mp4", bg, [], [], cfg.get("seconds", 3.0))
+    badges = []
+    if cfg.get("callouts"):
+        layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        d = ImageDraw.Draw(layer)
+        for c in cfg["callouts"]:
+            callout(d, c, (px + c["target"][0] * scale, py + c["target"][1] * scale), tuple(c["color"]))
+        png = TMP / "photo_callouts.png"
+        layer.save(png)
+        badges.append((png, (0, 0), cfg.get("callouts_at", 0.4)))
+    compose(PARTS / "photo.mp4", bg, [], badges, cfg.get("seconds", 3.0))
 
 
 def parts(args: argparse.Namespace) -> None:
