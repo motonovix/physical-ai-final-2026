@@ -17,7 +17,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 HERE = Path(__file__).resolve().parents[1]
 ASSETS = HERE / "assets"
@@ -57,12 +57,14 @@ def has_audio(path: Path) -> bool:
     return bool(out.strip())
 
 
-def compose(out: Path, bg: Path, videos: list[tuple], badges: list[tuple], total: float) -> None:
+def compose(out: Path, bg: Path, videos: list[tuple], badges: list[tuple], total: float,
+            fade_in: float = 0.0) -> None:
     """背景の上に動画と札を重ねる。
 
     videos: (path, speed, (x, y), (w, h)[, 前処理])。最後のコマで止めたまま total まで伸ばす。
         前処理は trim・crop など、速さを変える前に掛ける filter（省略可）。元の音声は使わない。
     badges: (png, (x, y), 出す時刻 s)。
+    fade_in: 頭を黒から浮かび上がらせる秒数。
     """
     t = f"{total:.3f}"
     args = ["-loop", "1", "-framerate", FPS, "-t", t, "-i", bg]
@@ -82,7 +84,8 @@ def compose(out: Path, bg: Path, videos: list[tuple], badges: list[tuple], total
     for j, (_, (x, y), t0) in enumerate(badges):
         chains.append(f"[{last}][{first + j}:v]overlay={x}:{y}:enable='gte(t,{t0:.3f})'[b{j}]")
         last = f"b{j}"
-    chains.append(f"[{last}]format=yuv420p[vout]")
+    fade = f"fade=t=in:st=0:d={fade_in:.3f}," if fade_in else ""
+    chains.append(f"[{last}]{fade}format=yuv420p[vout]")
     audio = first + len(badges)
     ffmpeg([*args, "-filter_complex", ";".join(chains), "-map", "[vout]", "-map", f"{audio}:a",
             "-t", t, *VCODEC, *ACODEC, "-movflags", "+faststart", out])
@@ -311,10 +314,74 @@ def part_screen(name: str, cfg: dict) -> None:
     compose(PARTS / f"{name}.mp4", bg, [(src, speed, (x, y), (w, h), pre)], [], (end - start) / speed + hold)
 
 
+def frame_of(src: Path, at: float, out: Path) -> Image.Image:
+    """画面録画の at 秒のコマを、窓だけ切り出して取る。"""
+    cw, ch, cx, cy = window_box(src, max(at - 1.0, 0.0), at + 1.0)
+    ffmpeg(["-ss", f"{at:.3f}", "-i", src, "-frames:v", "1", "-vf", f"crop={cw}:{ch}:{cx}:{cy}", out])
+    return Image.open(out).convert("RGB")
+
+
+def cover(img: Image.Image) -> Image.Image:
+    """画面いっぱいに広げ、はみ出た分を切る。"""
+    scale = max(W / img.width, H / img.height)
+    img = img.resize((round(img.width * scale), round(img.height * scale)), Image.LANCZOS)
+    x, y = (img.width - W) // 2, (img.height - H) // 2
+    return img.crop((x, y, x + W, y + H))
+
+
+def part_title(cfg: dict) -> None:
+    """題名の画面。背景に teleop の画面録画のコマをぼかして暗く敷く。"""
+    bg_cfg = cfg.get("bg")
+    if bg_cfg and (ASSETS / "teleop" / bg_cfg["src"]).exists():
+        shot = frame_of(ASSETS / "teleop" / bg_cfg["src"], bg_cfg.get("at", 0.0), TMP / "title_shot.png")
+        img = cover(shot).filter(ImageFilter.GaussianBlur(14))
+        img = ImageEnhance.Brightness(img).enhance(0.32)
+    else:
+        img = Image.new("RGB", (W, H), BG)
+    d = ImageDraw.Draw(img)
+    lead, main = cfg["main"]
+    d.text((W // 2, 400), lead, font=font(6, 64), fill=FG, anchor="mm")
+    d.text((W // 2, 535), main, font=font(8, 136), fill=FG, anchor="mm")
+    d.line((W // 2 - 360, 650, W // 2 + 360, 650), fill=SUB, width=2)
+    d.text((W // 2, 712), cfg["sub"], font=font(3, 38), fill=FG, anchor="mm")
+    bg = TMP / "title_bg.png"
+    img.save(bg)
+    compose(PARTS / "title.mp4", bg, [], [], cfg.get("seconds", 2.0), fade_in=0.3)
+
+
+def part_photo(cfg: dict) -> None:
+    """機材の写真を見出しの下に置く。HEIC は sips で JPEG にしてから読む。"""
+    src = ASSETS / "photo" / cfg["src"]
+    if src.suffix.lower() in {".heic", ".heif"}:
+        jpg = TMP / f"{src.stem}.jpg"
+        subprocess.run(["sips", "-s", "format", "jpeg", str(src), "--out", str(jpg)], check=True,
+                       stdout=subprocess.DEVNULL)
+        src = jpg
+    photo = ImageOps.exif_transpose(Image.open(src)).convert("RGB")
+    top, bottom, side = 170, 1050, 40
+    scale = min((W - 2 * side) / photo.width, (bottom - top) / photo.height)
+    photo = photo.resize((round(photo.width * scale), round(photo.height * scale)), Image.LANCZOS)
+    img, dr = canvas()
+    dr.text((80, 40), cfg["title"], font=font(6, 46), fill=FG)
+    if cfg.get("sub"):
+        dr.text((80, 104), cfg["sub"], font=font(3, 30), fill=SUB)
+    img.paste(photo, ((W - photo.width) // 2, top + (bottom - top - photo.height) // 2))
+    bg = TMP / "photo_bg.png"
+    img.save(bg)
+    compose(PARTS / "photo.mp4", bg, [], [], cfg.get("seconds", 3.0))
+
+
 def parts(args: argparse.Namespace) -> None:
     clips = json.loads((HERE / "clips.json").read_text())
     builders = {"smolvla": lambda: part_smolvla(clips), "compare": lambda: part_compare(clips),
                 "successes": lambda: part_successes(clips), "results": part_results}
+    if "title" in clips:
+        builders["title"] = lambda: part_title(clips["title"])
+    if "photo" in clips:
+        if (ASSETS / "photo" / clips["photo"]["src"]).exists():
+            builders["photo"] = lambda: part_photo(clips["photo"])
+        else:
+            print(f"skip photo: assets/photo/{clips['photo']['src']} が無い")
     for name, cfg in clips.get("screens", {}).items():
         if (ASSETS / "teleop" / cfg["src"]).exists():
             builders[name] = lambda name=name, cfg=cfg: part_screen(name, cfg)

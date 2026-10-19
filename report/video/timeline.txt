@@ -1,7 +1,8 @@
 # 動画の並び。build/parts/ のファイル名を上から順に書く（# から後は無視）。
 # 構成と長さの目安は README.md の「構成（案）」。（未）のパーツはできたら # を外す。
 #
-# title.mp4                # 0 タイトル（未）
+title.mp4                  # 0 タイトル（2 秒）
+# photo.mp4                # 0′ 機材の写真（assets/photo/setup.jpg を置いて make parts PART=photo）
 # pipeline.mp4             # 1 全体の流れ（未）
 #
 # 前半：Mac で teleop を動かしている様子の画面録画（assets/teleop/ に置き、clips.json の screens に書いて make parts）

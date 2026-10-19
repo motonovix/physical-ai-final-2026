@@ -1,4 +1,22 @@
 {
+  "title": {
+    "main": [
+      "ゲームコントローラと MacBook で始める",
+      "フィジカル AI"
+    ],
+    "sub": "LIBERO のロボットをテレオペしてデモを集め、VLA を追加学習する",
+    "seconds": 2.0,
+    "bg": {
+      "src": "b2.mov",
+      "at": 9.0
+    }
+  },
+  "photo": {
+    "src": "setup.jpg",
+    "seconds": 3.0,
+    "title": "使う機材",
+    "sub": "Nintendo Switch Pro コントローラ（Bluetooth でつなぐ）と MacBook"
+  },
   "compare": {
     "task": 12,
     "speed": 2.0
