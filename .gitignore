@@ -14,3 +14,7 @@ report/video/local.mk
 report/official/
 # レポートの PDF と、Omnicampus のアカウント名を入れた HTML（提出時に手元で作る）
 report/doc/build/
+# Omnicampus のアカウント名など、手元だけの設定（make pdf が読む）
+report/doc/local.env
+# PDF はどこに置いても Git に入れない
+*.pdf

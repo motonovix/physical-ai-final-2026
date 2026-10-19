@@ -1,8 +1,11 @@
 """report.html を A4 の PDF にする（Chrome のヘッドレス印刷）。
 
     --draft  アカウント名を入れずに確認用の build/draft.pdf を作る
-    （なし）  Omnicampus のアカウント名と動画の URL を聞いて、提出用の
+    （なし）  Omnicampus のアカウント名と動画の URL を入れて、提出用の
              build/説明資料_PAI最終課題_<アカウント名>.pdf を作る
+
+アカウント名と URL は、環境変数 → local.env（Git 管理外、local.env.example を参照）の順に探し、
+どちらにも無ければ入力で聞く。
 
 アカウント名と URL は report.html には書かない。data-fill の要素を置き換えた HTML を build/ に作り、
 そこから印刷する（build/ は Git 管理外）。最後にページ数を数え、各ページを build/pages/ に画像で残す。
@@ -21,6 +24,20 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parents[1]
 BUILD = HERE / "build"
 CHROME = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+
+
+def local_settings() -> dict[str, str]:
+    """local.env（KEY=値 の行）を読む。無ければ空。"""
+    path = HERE / "local.env"
+    if not path.exists():
+        return {}
+    settings = {}
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            settings[key.strip()] = value.strip()
+    return settings
 
 
 def ask(prompt: str, env: str, given: str | None, required: bool) -> str:
@@ -60,10 +77,16 @@ def main() -> None:
     if args.draft:
         name, filled = "draft", source
     else:
-        account = ask("Omnicampus のアカウント名", "OMNICAMPUS_ID", None, required=True)
+        local = local_settings()
+        account = ask("Omnicampus のアカウント名", "OMNICAMPUS_ID",
+                      os.environ.get("OMNICAMPUS_ID") or local.get("OMNICAMPUS_ID") or None, required=True)
         if re.search(r'[/\\:*?"<>|]', account):
             raise SystemExit("アカウント名にファイル名に使えない文字がある")
-        youtube = ask("YouTube の動画の URL（まだなら空のまま Enter）", "YOUTUBE_URL", None, required=False)
+        if "OMNICAMPUS_ID" in os.environ or local.get("OMNICAMPUS_ID"):
+            # アカウント名を設定から取ったときは聞かない（URL も設定にあれば使い、無ければ空のまま）
+            youtube = os.environ.get("YOUTUBE_URL", local.get("YOUTUBE_URL", ""))
+        else:
+            youtube = ask("YouTube の動画の URL（まだなら空のまま Enter）", "YOUTUBE_URL", None, required=False)
         name = f"説明資料_PAI最終課題_{account}"
         filled = fill(source, {"omnicampus-id": account, "youtube-url": youtube})
     # build/ から report.css と figures/ を読めるよう、基準の場所を report/doc/ にする

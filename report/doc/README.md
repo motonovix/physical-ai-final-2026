@@ -13,13 +13,14 @@ make pdf       # 提出用 PDF を作る（下を参照）
 make open      # build/ を Finder で開く
 ```
 
-`make pdf` は Omnicampus のアカウント名と YouTube の動画の URL を聞き、
+`make pdf` は Omnicampus のアカウント名と YouTube の動画の URL を入れて、
 `build/説明資料_PAI最終課題_<アカウント名>.pdf` を作る（ファイル名は課題の指定どおり）。
 
-- アカウント名と URL は `report.html` には書かない。`data-fill` の要素を置き換えた HTML を `build/` に作り、そこから印刷する。
-  `build/` は Git 管理外なので、公開リポジトリには入らない。
-- コマンドの履歴に残らないよう、引数ではなく入力で受け取る（環境変数 `OMNICAMPUS_ID`・`YOUTUBE_URL` でも渡せる）。
-- 動画の URL は、まだなければ空のまま Enter でよい（「提出時に記入」のまま残る）。
+- アカウント名と URL は、手元だけの `local.env`（Git 管理外）に書いておく。`local.env.example` を写して値を書く。
+  環境変数 `OMNICAMPUS_ID`・`YOUTUBE_URL` があればそちらを優先し、どちらにも無ければ入力で聞く。
+- `report.html` にはアカウント名と URL を書かない。`data-fill` の要素を置き換えた HTML を `build/` に作り、そこから印刷する。
+- `build/`・`local.env`・すべての `*.pdf` は `.gitignore` 済みなので、公開リポジトリには入らない。
+- 動画の URL は、YouTube に上げたら `local.env` の `YOUTUBE_URL=` に書いて `make pdf` し直す（空なら「提出時に記入」のまま）。
 - PDF は Chrome のヘッドレス印刷で作る。最後にページ数を表示する。
 
 ## 中身
