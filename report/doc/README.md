@@ -18,6 +18,7 @@ make open      # build/ を Finder で開く
 
 - アカウント名と URL は、手元だけの `local.env`（Git 管理外）に書いておく。`local.env.example` を写して値を書く。
   環境変数 `OMNICAMPUS_ID`・`YOUTUBE_URL` があればそちらを優先し、どちらにも無ければ入力で聞く。
+  PDF の Omnicampus の欄は `OMNICAMPUS_IN_PDF` があればそれを出す（無ければアカウント名）。ファイル名はいつもアカウント名。
 - `report.html` にはアカウント名と URL を書かない。`data-fill` の要素を置き換えた HTML を `build/` に作り、そこから印刷する。
 - `build/`・`local.env`・すべての `*.pdf` は `.gitignore` 済みなので、公開リポジトリには入らない。
 - 動画の URL は、YouTube に上げたら `local.env` の `YOUTUBE_URL=` に書いて `make pdf` し直す（空なら「提出時に記入」のまま）。

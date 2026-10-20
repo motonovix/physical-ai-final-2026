@@ -5,7 +5,8 @@
              build/説明資料_PAI最終課題_<アカウント名>.pdf を作る
 
 アカウント名と URL は、環境変数 → local.env（Git 管理外、local.env.example を参照）の順に探し、
-どちらにも無ければ入力で聞く。
+どちらにも無ければ入力で聞く。PDF の Omnicampus の欄には OMNICAMPUS_IN_PDF を書く（無ければアカウント名）。
+ファイル名はいつもアカウント名を使う。
 
 アカウント名と URL は report.html には書かない。data-fill の要素を置き換えた HTML を build/ に作り、
 そこから印刷する（build/ は Git 管理外）。最後にページ数を数え、各ページを build/pages/ に画像で残す。
@@ -87,8 +88,9 @@ def main() -> None:
             youtube = os.environ.get("YOUTUBE_URL", local.get("YOUTUBE_URL", ""))
         else:
             youtube = ask("YouTube の動画の URL（まだなら空のまま Enter）", "YOUTUBE_URL", None, required=False)
+        shown = os.environ.get("OMNICAMPUS_IN_PDF") or local.get("OMNICAMPUS_IN_PDF") or account
         name = f"説明資料_PAI最終課題_{account}"
-        filled = fill(source, {"omnicampus-id": account, "youtube-url": youtube})
+        filled = fill(source, {"omnicampus-id": shown, "youtube-url": youtube})
     # build/ から report.css と figures/ を読めるよう、基準の場所を report/doc/ にする
     filled = filled.replace("<head>", '<head>\n<base href="../">', 1)
     page = BUILD / f"{name}.html"
