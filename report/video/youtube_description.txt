@@ -1,0 +1,15 @@
+ゲームコントローラと MacBook でシミュレータのロボットをテレオペしてデモを集め、VLA（SmolVLA・π0.5）を追加学習しました。
+東京大学 松尾・岩澤研究室 Physical AI応用編１ 最終課題
+
+コード：https://github.com/motonovix/physical-ai-final-2026
+
+※ π0.5 の学習前後を並べた場面は 2 倍速です。
+
+■ クレジット・ライセンス
+・LIBERO（MIT License、データセットは CC BY 4.0）、LIBERO-Plus
+・robosuite（MIT License）、MuJoCo（Apache-2.0）
+・LeRobot、SmolVLA（Apache-2.0）
+・π0.5 / openpi（Physical Intelligence、Apache-2.0）。重みは Gemma の利用規約に従う
+・ナレーション：AivisSpeech: まお（Aivis Common Model License 1.0）
+・テレオペ環境と動画の制作：Claude Code（Anthropic）、FFmpeg ほか
+Nintendo Switch は任天堂の商標、MacBook は Apple Inc. の商標です。

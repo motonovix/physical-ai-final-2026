@@ -190,6 +190,7 @@ YouTube の推奨に合わせ、すべてのパーツを同じ形式にそろえ
   左に題名と結果（学習で成功 0 → 13、16 タスク中）、右に機材の写真（`assets/photo/setup.jpg`）を置き、写真の上に teleop の画面（b2 の 9 秒）を重ねる。
   文字・写真の切り出し・重ねる画面の位置は clips.json の `thumbnail` で変える。
 - **アップロード：** YouTube へは自分のアカウントで上げる。公開範囲（限定公開など）は課題の指示に合わせる。
+- **概要欄：** [youtube_description.txt](youtube_description.txt) をそのまま貼る（リポジトリの URL、2 倍速の断り書き、最小限のクレジット・ライセンス）。
 
 ## ファイル
 
@@ -199,6 +200,7 @@ YouTube の推奨に合わせ、すべてのパーツを同じ形式にそろえ
 | `scripts/build_parts.py` | 素材を写す・パーツを組む・録画をそろえる・つなぐ・サムネイルを作る |
 | `clips.json` | 後半で使う問題の番号と日本語の字幕 |
 | `timeline.txt` | パーツの並び |
+| `youtube_description.txt` | YouTube の概要欄に貼る文 |
 | `local.mk.example` | 元動画の場所の書き方（写して `local.mk` にする） |
 | `assets/` | 素材（Git 管理外）。`teleop/` に自分の録画、`parc2026/` に写した元動画 |
 | `build/` | パーツ・確認用の画像・書き出し（Git 管理外） |
